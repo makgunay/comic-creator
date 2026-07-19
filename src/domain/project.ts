@@ -155,12 +155,24 @@ export const ProjectSchema = ProjectShapeSchema.superRefine((project, context) =
     }
   };
 
+  const imageVersionIds = new Set<string>();
+  const validateImageVersionIds = (imageVersions: readonly ImageVersion[], path: (string | number)[]) => {
+    imageVersions.forEach((imageVersion, index) => {
+      if (imageVersionIds.has(imageVersion.id)) {
+        addIssue([...path, index, "id"], "Image version IDs must be unique across the project.");
+      }
+      imageVersionIds.add(imageVersion.id);
+    });
+  };
+
+  validateImageVersionIds(project.hero.imageVersions, ["hero", "imageVersions"]);
   validateApprovedImageVersion(
     project.hero.imageVersions,
     project.hero.approvedReferenceImageId,
     ["hero", "approvedReferenceImageId"],
   );
   project.panels.forEach((panel, index) => {
+    validateImageVersionIds(panel.imageVersions, ["panels", index, "imageVersions"]);
     validateApprovedImageVersion(
       panel.imageVersions,
       panel.approvedImageVersionId,

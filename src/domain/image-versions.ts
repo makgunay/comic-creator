@@ -1,10 +1,14 @@
 import type { Panel } from "./project";
 
 export function approveImageVersion(panel: Panel, versionId: string): Panel {
-  const selected = panel.imageVersions.find((version) => version.id === versionId);
-  if (!selected) {
+  const selectedVersions = panel.imageVersions.filter((version) => version.id === versionId);
+  if (selectedVersions.length === 0) {
     throw new Error(`Unknown image version: ${versionId}`);
   }
+  if (selectedVersions.length > 1) {
+    throw new Error(`Duplicate image version ID: ${versionId}`);
+  }
+  const selected = selectedVersions[0]!;
   if (selected.status !== "candidate") {
     throw new Error(`Image version is not a candidate: ${versionId}`);
   }

@@ -49,4 +49,17 @@ describe("approveImageVersion", () => {
       "Image version is not a candidate: rejected",
     );
   });
+
+  it("rejects a malformed panel with duplicate image version IDs", () => {
+    const panel = makePanel({
+      imageVersions: [
+        makeImageVersion({ id: "duplicate" }),
+        makeImageVersion({ id: "duplicate", localPath: "images/duplicate-2.png" }),
+      ],
+    });
+
+    expect(() => approveImageVersion(panel, "duplicate")).toThrow(
+      "Duplicate image version ID: duplicate",
+    );
+  });
 });

@@ -106,4 +106,34 @@ describe("createProject", () => {
 
     expect(ProjectSchema.safeParse(project).success).toBe(false);
   });
+
+  it.each([
+    ["hero and panel images", (project: ReturnType<typeof createProject>) => {
+      const imageVersion = {
+        id: "shared-image",
+        localPath: "images/shared-image.png",
+        createdAt: "2026-07-20T00:00:00.000Z",
+        childRevisionDirection: "",
+        status: "candidate" as const,
+      };
+      project.hero.imageVersions = [imageVersion];
+      project.panels[0]!.imageVersions = [imageVersion];
+    }],
+    ["two panel image collections", (project: ReturnType<typeof createProject>) => {
+      const imageVersion = {
+        id: "shared-image",
+        localPath: "images/shared-image.png",
+        createdAt: "2026-07-20T00:00:00.000Z",
+        childRevisionDirection: "",
+        status: "candidate" as const,
+      };
+      project.panels[0]!.imageVersions = [imageVersion];
+      project.panels[1]!.imageVersions = [imageVersion];
+    }],
+  ])("rejects duplicate image IDs across %s", (_description, mutate) => {
+    const project = createProject({ title: "Nova and the Moon Kite", localAuthorCredit: "M." });
+    mutate(project);
+
+    expect(ProjectSchema.safeParse(project).success).toBe(false);
+  });
 });
