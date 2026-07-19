@@ -70,3 +70,16 @@ new entry that explicitly supersedes the earlier decision.
   authorship-preserving differentiator.
 - Consequence: Defer the AI-finish experiment, full instrumentation, stock cast,
   accounts, gallery, remote collaboration, and additional export formats.
+
+## D-006 — Submit in the Education category
+
+- Date: 2026-07-20
+- Status: Accepted
+- Context: Comic Creator could fit a general consumer category, but its specific
+  mechanism and evidence concern narrative construction, creative agency, and
+  guided AI literacy.
+- Decision: Submit the Build Week project in `Education`.
+- Rationale: The category aligns with the demonstrated problem, research, and
+  impact case rather than treating learning as incidental marketing.
+- Consequence: Submission claims must remain narrow: authorship and productive
+  creation, not proven literacy gains or summer-loss prevention.

@@ -11,7 +11,7 @@ building unnecessary scope.
 
 ## Current checkpoint
 
-Checkpoint 2 — Review the written MVP design and prepare implementation.
+Checkpoint 3 — Choose an execution workflow, then build and validate the MVP.
 
 ## Checkpoints
 
@@ -34,21 +34,22 @@ Checkpoint 2 — Review the written MVP design and prepare implementation.
 Acceptance: `PROJECT.md` contains an agreed problem, audience, core loop,
 guardrails, non-goals, and success scenario.
 
-### 2. Experience and technical plan — active
+### 2. Experience and technical plan — complete
 
 - [x] Turn the core loop into screens, states, and failure paths.
 - [x] Choose the smallest architecture that supports the demo.
 - [x] Define provider roles, authorship invariants, and the live-risk spike.
 - [x] Define test strategy, sample data, and the three-minute demo path.
 - [x] Write and self-review the durable MVP design specification.
-- [ ] Obtain user review of the written specification.
-- [ ] Confirm or revise the recommended `Education` category.
-- [ ] Write the checkpointed implementation plan.
+- [x] Obtain user review of the written specification.
+- [x] Confirm the `Education` category.
+- [x] Write and self-review the checkpointed implementation plan.
 
 Acceptance: the user approves the written specification and a checkpointed
-implementation plan exists without unresolved product or provider assumptions.
+implementation plan exists with provider uncertainty converted into an explicit
+early feasibility gate.
 
-### 3. Build and validate the MVP — pending
+### 3. Build and validate the MVP — pending execution choice
 
 - [ ] Implement the complete core journey.
 - [ ] Validate happy path and important failure states.
@@ -72,8 +73,8 @@ and access paths have been checked independently.
 
 ## Guardrails for the current checkpoint
 
-- Do not write implementation code before the written spec is reviewed and the
-  implementation plan is approved.
+- Do not write implementation code until the user chooses an execution
+  workflow; that choice accepts the implementation plan for execution.
 - Validate live reference-image consistency and latency before building the
   full generation workflow.
 - Do not expand the documentation system unless a concrete retrieval failure

@@ -8,7 +8,8 @@ Comic Creator
 
 ## Stage
 
-Build Week MVP design approved; written specification awaiting user review.
+Build Week MVP design and written specification approved; checkpointed
+implementation plan ready for execution choice.
 
 ## Product definition
 
@@ -59,8 +60,7 @@ A first-time child can create one four-panel comic locally, revise its artwork,
 retain exact authorship of every word, restore the project after restart, and
 export a readable PDF without learning a general-purpose design tool.
 
-The recommended submission category is `Education`; it will be locked when the
-user approves the written specification.
+The submission category is `Education`.
 
 ## Deliberate MVP boundary
 

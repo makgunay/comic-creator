@@ -2,7 +2,7 @@
 
 Date: 2026-07-20
 
-Status: Approved in conversation; awaiting review of this written spec
+Status: Approved by the user
 
 ## Product thesis
 
@@ -30,9 +30,8 @@ panels; the app paginates them four per page.
 
 The recommended submission category is **Education** because the demonstrated
 mechanism is authorship-preserving narrative construction and guided AI
-literacy, not merely general entertainment. The category is a submission
-decision, not an implementation dependency, and remains pending until the user
-approves this written specification.
+literacy, not merely general entertainment. The user approved the written
+specification and confirmed this category on 2026-07-20.
 
 ## Product guardrails
 
