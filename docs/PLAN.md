@@ -11,7 +11,7 @@ building unnecessary scope.
 
 ## Current checkpoint
 
-Checkpoint 3 — Choose an execution workflow, then build and validate the MVP.
+Checkpoint 3 — Build and validate the MVP with subagent-driven development.
 
 ## Checkpoints
 
@@ -49,7 +49,7 @@ Acceptance: the user approves the written specification and a checkpointed
 implementation plan exists with provider uncertainty converted into an explicit
 early feasibility gate.
 
-### 3. Build and validate the MVP — pending execution choice
+### 3. Build and validate the MVP — active
 
 - [ ] Implement the complete core journey.
 - [ ] Validate happy path and important failure states.
@@ -73,8 +73,8 @@ and access paths have been checked independently.
 
 ## Guardrails for the current checkpoint
 
-- Do not write implementation code until the user chooses an execution
-  workflow; that choice accepts the implementation plan for execution.
+- Execute each implementation task with a fresh implementer, TDD evidence, and
+  task-scoped specification and quality review before the next task.
 - Validate live reference-image consistency and latency before building the
   full generation workflow.
 - Do not expand the documentation system unless a concrete retrieval failure

@@ -4,13 +4,13 @@ Last updated: 2026-07-20
 
 ## Current stage
 
-Build Week MVP design and written specification approved. The checkpointed
-implementation plan is written and self-reviewed; application code has not
-started.
+Build Week MVP implementation is starting on
+`feature/comic-creator-mvp` with the approved subagent-driven workflow.
 
 ## Current focus
 
-Choose the implementation-plan execution workflow.
+Execute Task 1 of the implementation plan, then pass its specification and
+code-quality review gates.
 
 ## Verified facts
 
@@ -28,6 +28,10 @@ Choose the implementation-plan execution workflow.
 - The final submission category is `Education`.
 - The implementation plan is
   `docs/superpowers/plans/2026-07-20-comic-creator-mvp.md`.
+- The user chose subagent-driven execution: one fresh implementer per task,
+  followed by task-scoped specification and quality review.
+- Desktop and mobile visual references have been generated from the approved
+  product design for later browser-fidelity verification.
 - No open-source license has been added.
 - The official submission deadline is 2026-07-21 at 5:00 PM Pacific Time.
 
@@ -46,16 +50,17 @@ See `DECISIONS.md` for rationale and consequences.
 
 - The reference-guided hero workflow must be proven against live model latency
   and consistency before the full generation UI is built.
-- No application code or deterministic test harness exists yet.
+- No application code or deterministic test harness exists yet; Task 1 is
+  first.
 
 ## Next actions
 
-1. Ask the user to choose the plan-execution workflow.
-2. Execute the plan task-by-task with its test and commit checkpoints.
+1. Implement and review Task 1.
+2. Continue through the plan without pausing between reviewed tasks.
 3. Prove the live hero-reference and panel-generation path before the full UI.
 4. Build and verify the solo core before considering two-author stretch work.
 
 ## Resume cue
 
-Read the approved MVP design and implementation plan. Resume from the user's
-execution-workflow choice; do not restart product definition.
+Read the approved MVP design, implementation plan, and local SDD progress
+ledger. Resume at the first task not marked complete.
