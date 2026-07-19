@@ -15,6 +15,7 @@ describe("approveImageVersion", () => {
 
     expect(updated.approvedImageVersionId).toBe("new");
     expect(updated.imageVersions).toHaveLength(2);
+    expect(updated.imageVersions.find((version) => version.id === "new")?.status).toBe("approved");
     expect(updated.imageVersions.find((version) => version.id === "old")?.status).toBe("rejected");
   });
 

@@ -4,6 +4,13 @@ export const BeatTypeSchema = z.enum(["setup", "problem", "bigMoment", "ending"]
 export const StylePresetSchema = z.enum(["cartoon", "manga", "superhero"]);
 export const GenerationStatusSchema = z.enum(["idle", "generating", "failed-retryable"]);
 
+const isRelativeImageAssetKey = (localPath: string) => {
+  const segments = localPath.split("/");
+  return localPath.startsWith("images/")
+    && !localPath.includes("\\")
+    && segments.every((segment) => segment.length > 0 && segment !== "..");
+};
+
 export const TextOverlaySchema = z.object({
   id: z.string().min(1),
   kind: z.enum(["dialogue", "caption"]),
@@ -17,7 +24,9 @@ export const TextOverlaySchema = z.object({
 
 export const ImageVersionSchema = z.object({
   id: z.string().min(1),
-  localPath: z.string().regex(/^images\/(?!.*(?:^|\/)\.\.(?:\/|$)).+$/),
+  localPath: z.string().refine(isRelativeImageAssetKey, {
+    message: "Image paths must be relative images asset keys.",
+  }),
   createdAt: z.string().datetime(),
   sourceReferenceImageId: z.string().optional(),
   providerRequestId: z.string().optional(),
@@ -47,7 +56,7 @@ export const BeatSchema = z.object({
   panelIds: z.array(z.string()),
 });
 
-export const ProjectSchema = z.object({
+const ProjectShapeSchema = z.object({
   id: z.string().min(1),
   schemaVersion: z.literal(1),
   title: z.string().min(1),
@@ -66,6 +75,98 @@ export const ProjectSchema = z.object({
   }),
   beats: z.array(BeatSchema).length(4),
   panels: z.array(PanelSchema).min(4),
+});
+
+export const ProjectSchema = ProjectShapeSchema.superRefine((project, context) => {
+  const addIssue = (path: (string | number)[], message: string) => {
+    context.addIssue({ code: z.ZodIssueCode.custom, path, message });
+  };
+  const beatIds = new Set<string>();
+  const beatTypeCounts = new Map<string, number>();
+  const panelMembership = new Map<string, string[]>();
+  const panelIds = new Set<string>();
+  const panelOrders = new Set<number>();
+
+  project.panels.forEach((panel, index) => {
+    if (panelIds.has(panel.id)) {
+      addIssue(["panels", index, "id"], "Panel IDs must be unique.");
+    }
+    panelIds.add(panel.id);
+    if (panelOrders.has(panel.order)) {
+      addIssue(["panels", index, "order"], "Panel orders must be unique.");
+    }
+    panelOrders.add(panel.order);
+  });
+
+  project.beats.forEach((beat, index) => {
+    if (beatIds.has(beat.id)) {
+      addIssue(["beats", index, "id"], "Beat IDs must be unique.");
+    }
+    beatIds.add(beat.id);
+    beatTypeCounts.set(beat.type, (beatTypeCounts.get(beat.type) ?? 0) + 1);
+    if (beat.panelIds.length === 0) {
+      addIssue(["beats", index, "panelIds"], "Each beat must own at least one panel.");
+    }
+    beat.panelIds.forEach((panelId, panelIndex) => {
+      if (!panelIds.has(panelId)) {
+        addIssue(["beats", index, "panelIds", panelIndex], "Beat panel IDs must exist.");
+      }
+      const memberships = panelMembership.get(panelId) ?? [];
+      memberships.push(beat.id);
+      panelMembership.set(panelId, memberships);
+    });
+  });
+
+  for (const beatType of BeatTypeSchema.options) {
+    if (beatTypeCounts.get(beatType) !== 1) {
+      addIssue(["beats"], `Project must contain exactly one ${beatType} beat.`);
+    }
+  }
+
+  project.panels.forEach((panel, index) => {
+    const memberships = panelMembership.get(panel.id) ?? [];
+    if (memberships.length !== 1) {
+      addIssue(["panels", index, "id"], "Each panel must belong to exactly one beat.");
+    } else if (panel.beatId !== memberships[0]) {
+      addIssue(["panels", index, "beatId"], "Panel beat ID must match its beat membership.");
+    }
+  });
+
+  const validateApprovedImageVersion = (
+    imageVersions: readonly ImageVersion[],
+    approvedImageVersionId: string | undefined,
+    path: (string | number)[],
+  ) => {
+    const approvedVersions = imageVersions.filter((version) => version.status === "approved");
+    if (approvedImageVersionId === undefined) {
+      if (approvedVersions.length > 0) {
+        addIssue(path, "An approved image version ID is required for approved images.");
+      }
+      return;
+    }
+
+    const approvedVersion = imageVersions.find((version) => version.id === approvedImageVersionId);
+    if (!approvedVersion) {
+      addIssue(path, "Approved image version ID must reference an image version.");
+      return;
+    }
+    if (approvedVersion.status !== "approved" || approvedVersions.length !== 1) {
+      addIssue(path, "Approved image version ID must match exactly one approved image.");
+    }
+  };
+
+  validateApprovedImageVersion(
+    project.hero.imageVersions,
+    project.hero.approvedReferenceImageId,
+    ["hero", "approvedReferenceImageId"],
+  );
+  project.panels.forEach((panel, index) => {
+    validateApprovedImageVersion(
+      panel.imageVersions,
+      panel.approvedImageVersionId,
+      ["panels", index, "approvedImageVersionId"],
+    );
+  });
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
