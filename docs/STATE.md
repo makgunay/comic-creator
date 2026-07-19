@@ -9,7 +9,7 @@ Build Week MVP implementation is underway on
 
 ## Current focus
 
-Implement Task 2 of the implementation plan, then pass its specification and
+Implement Task 3 of the implementation plan, then pass its specification and
 code-quality review gates.
 
 ## Verified facts
@@ -36,6 +36,10 @@ code-quality review gates.
 - The official submission deadline is 2026-07-21 at 5:00 PM Pacific Time.
 - Task 1 established the local TypeScript application foundation: a React/Vite
   client, Express server, and deterministic health test all pass verification.
+- Task 2 established the browser-safe, schema-validated shared project domain:
+  four beats and panels, relative image asset keys, derived pagination, and
+  immutable candidate-image approval transitions. Focused domain tests, strict
+  typechecking, and full verification pass.
 
 ## Active decisions
 
@@ -52,11 +56,13 @@ See `DECISIONS.md` for rationale and consequences.
 
 - The reference-guided hero workflow must be proven against live model latency
   and consistency before the full generation UI is built.
-- Task 2 must establish the domain model and local project persistence.
+- Task 3 must prove the live OpenAI direction and reference-image path before
+  the full generation workflow is built.
 
 ## Next actions
 
-1. Implement and review Task 2.
+1. Implement and review Task 3: prove the OpenAI direction and reference-image
+   path.
 2. Continue through the plan without pausing between reviewed tasks.
 3. Prove the live hero-reference and panel-generation path before the full UI.
 4. Build and verify the solo core before considering two-author stretch work.
