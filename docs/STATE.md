@@ -4,13 +4,13 @@ Last updated: 2026-07-20
 
 ## Current stage
 
-Build Week MVP implementation is starting on
+Build Week MVP implementation is underway on
 `feature/comic-creator-mvp` with the approved subagent-driven workflow.
 
 ## Current focus
 
-Task 1 of the implementation plan is implemented and locally verified. Its
-specification and code-quality review gates are next.
+Implement Task 2 of the implementation plan, then pass its specification and
+code-quality review gates.
 
 ## Verified facts
 
@@ -34,6 +34,8 @@ specification and code-quality review gates are next.
   product design for later browser-fidelity verification.
 - No open-source license has been added.
 - The official submission deadline is 2026-07-21 at 5:00 PM Pacific Time.
+- Task 1 established the local TypeScript application foundation: a React/Vite
+  client, Express server, and deterministic health test all pass verification.
 
 ## Active decisions
 
@@ -50,12 +52,11 @@ See `DECISIONS.md` for rationale and consequences.
 
 - The reference-guided hero workflow must be proven against live model latency
   and consistency before the full generation UI is built.
-- No application code or deterministic test harness exists yet; Task 1 is
-  first.
+- Task 2 must establish the domain model and local project persistence.
 
 ## Next actions
 
-1. Complete Task 1 specification and code-quality reviews.
+1. Implement and review Task 2.
 2. Continue through the plan without pausing between reviewed tasks.
 3. Prove the live hero-reference and panel-generation path before the full UI.
 4. Build and verify the solo core before considering two-author stretch work.
