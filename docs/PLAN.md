@@ -1,6 +1,6 @@
 # Active Plan
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 Status: Active
 
 ## Goal
@@ -11,7 +11,7 @@ building unnecessary scope.
 
 ## Current checkpoint
 
-Checkpoint 1 — Capture and refine the product concept.
+Checkpoint 2 — Review the written MVP design and prepare implementation.
 
 ## Checkpoints
 
@@ -22,27 +22,31 @@ Checkpoint 1 — Capture and refine the product concept.
 - [x] Record current hackathon and licensing constraints.
 - [x] Provide a deterministic resume path for future agents.
 
-### 1. Product definition — active
+### 1. Product definition — complete
 
-- [ ] Capture the user's complete idea without prematurely narrowing it.
-- [ ] Define the real user problem and primary audience.
-- [ ] Map the end-to-end child and parent/educator experience.
-- [ ] Identify the distinctive authorship and creative-control mechanism.
-- [ ] Define explicit MVP non-goals.
-- [ ] Select the submission category.
+- [x] Capture the user's complete idea without prematurely narrowing it.
+- [x] Define the real user problem and primary audience.
+- [x] Map the end-to-end child and parent/educator experience.
+- [x] Identify the distinctive authorship and creative-control mechanism.
+- [x] Define explicit MVP non-goals.
+- [x] Recommend `Education` as the strongest submission category.
 
 Acceptance: `PROJECT.md` contains an agreed problem, audience, core loop,
 guardrails, non-goals, and success scenario.
 
-### 2. Experience and technical plan — pending
+### 2. Experience and technical plan — active
 
-- [ ] Turn the core loop into screens, states, and failure paths.
-- [ ] Choose the smallest architecture that supports the demo.
-- [ ] Select providers only after checking rights, safety, cost, and latency.
-- [ ] Define test strategy, sample data, and the three-minute demo path.
+- [x] Turn the core loop into screens, states, and failure paths.
+- [x] Choose the smallest architecture that supports the demo.
+- [x] Define provider roles, authorship invariants, and the live-risk spike.
+- [x] Define test strategy, sample data, and the three-minute demo path.
+- [x] Write and self-review the durable MVP design specification.
+- [ ] Obtain user review of the written specification.
+- [ ] Confirm or revise the recommended `Education` category.
+- [ ] Write the checkpointed implementation plan.
 
-Acceptance: the implementation can be built checkpoint by checkpoint without
-unresolved product or provider assumptions.
+Acceptance: the user approves the written specification and a checkpointed
+implementation plan exists without unresolved product or provider assumptions.
 
 ### 3. Build and validate the MVP — pending
 
@@ -68,8 +72,10 @@ and access paths have been checked independently.
 
 ## Guardrails for the current checkpoint
 
-- Do not choose a stack or provider yet.
-- Do not convert an unconfirmed idea into a durable decision.
+- Do not write implementation code before the written spec is reviewed and the
+  implementation plan is approved.
+- Validate live reference-image consistency and latency before building the
+  full generation workflow.
 - Do not expand the documentation system unless a concrete retrieval failure
   demonstrates the need.
 - Keep the demoable core journey ahead of secondary features.

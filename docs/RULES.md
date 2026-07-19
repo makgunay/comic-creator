@@ -1,6 +1,6 @@
 # Rules and Constraints
 
-Last verified: 2026-07-19
+Last verified: 2026-07-20
 
 The official source is the
 [OpenAI Build Week rules](https://openai.devpost.com/rules). Reverify the live
@@ -23,6 +23,9 @@ rules before submission; the official page takes precedence over this summary.
 - Provide the `/feedback` session ID from the task where most core
   functionality was built.
 - Keep all submission materials in English or provide English translations.
+- A hosted website is optional. A consistently runnable local project is
+  acceptable when the repository includes clean setup instructions and sample
+  data.
 
 ## Repository access and licensing
 
