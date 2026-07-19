@@ -9,8 +9,8 @@ Build Week MVP implementation is starting on
 
 ## Current focus
 
-Execute Task 1 of the implementation plan, then pass its specification and
-code-quality review gates.
+Task 1 of the implementation plan is implemented and locally verified. Its
+specification and code-quality review gates are next.
 
 ## Verified facts
 
@@ -55,7 +55,7 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Next actions
 
-1. Implement and review Task 1.
+1. Complete Task 1 specification and code-quality reviews.
 2. Continue through the plan without pausing between reviewed tasks.
 3. Prove the live hero-reference and panel-generation path before the full UI.
 4. Build and verify the solo core before considering two-author stretch work.

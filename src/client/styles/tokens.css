@@ -1,0 +1,13 @@
+:root {
+  color: #202020;
+  background: #f4ead7;
+  font-family: Inter, ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  --paper: #f4ead7;
+  --card: #fffdf7;
+  --ink: #202020;
+  --purple: #6f51d8;
+  --mint: #d9f2e8;
+  --amber: #ffe6bc;
+  --blue: #daeffd;
+  --focus: #174d72;
+}

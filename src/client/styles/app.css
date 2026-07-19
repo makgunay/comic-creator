@@ -1,0 +1,6 @@
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--paper); }
+button, input, textarea, select { font: inherit; }
+:focus-visible { outline: 4px solid var(--focus); outline-offset: 3px; }
+.app-shell { width: min(1100px, calc(100% - 32px)); margin: 0 auto; padding: 64px 0; }
+h1 { max-width: 12ch; margin: 0; font-size: clamp(3rem, 8vw, 6rem); line-height: .9; }
