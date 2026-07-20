@@ -16,6 +16,7 @@ export function makeClientApi(project: Project, overrides: Partial<ComicApi> = {
     approvePanelVersion: vi.fn().mockResolvedValue({ project }),
     rejectPanelCandidate: vi.fn().mockResolvedValue({ project }),
     imageUrl: vi.fn((projectId, imageId) => `/api/projects/${projectId}/images/${imageId}`),
+    exportUrl: vi.fn((projectId) => `/api/projects/${projectId}/export.pdf`),
     ...overrides,
   };
 }

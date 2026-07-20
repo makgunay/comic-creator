@@ -6,6 +6,7 @@ import {
   type GenerationConfigStatus,
 } from "./api/client";
 import { AppFrame, type WorkshopStep } from "./components/AppFrame";
+import { ComicPreview } from "./features/comic/ComicPreview";
 import { HeroWorkshop } from "./features/hero/HeroWorkshop";
 import { LaunchScreen } from "./features/launch/LaunchScreen";
 import { PanelWorkshop } from "./features/panels/PanelWorkshop";
@@ -80,10 +81,19 @@ function ProjectWorkshop({
           onChange={replaceProject}
           acceptServerProject={acceptServerProject}
           onBackToStory={() => setStep("story")}
+          onNextToPremiere={() => setStep("premiere")}
           onBusyChange={setActiveDraw}
         />
       ) : null}
-      {step !== "panels" ? <div className="step-actions">
+      {step === "premiere" ? (
+        <ComicPreview
+          project={project}
+          imageUrl={(_panelId, imageId) => api.imageUrl(project.id, imageId)}
+          exportUrl={api.exportUrl(project.id)}
+          onBackToPanels={() => setStep("panels")}
+        />
+      ) : null}
+      {step !== "panels" && step !== "premiere" ? <div className="step-actions">
         {step !== "hero" ? (
           <button
             className="button button-secondary previous-button"

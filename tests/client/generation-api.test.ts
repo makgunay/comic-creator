@@ -26,6 +26,8 @@ describe("generation client API", () => {
     expect(fetchMock.mock.calls[1]![0]).toBe("/api/projects/project%2Fid/hero/image%2Fid/approve");
     expect(api.imageUrl("project/id", "image/id"))
       .toBe("/api/projects/project%2Fid/images/image%2Fid");
+    expect(api.exportUrl("project/id"))
+      .toBe("/api/projects/project%2Fid/export.pdf");
   });
 
   it("rejects malformed success payloads and secret-like error messages", async () => {

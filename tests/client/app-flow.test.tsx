@@ -61,16 +61,36 @@ describe("App child flow", () => {
     expect(screen.getByRole("button", { name: "Story" })).toBeEnabled();
   });
 
-  it("enables Panels while keeping Premiere truthfully unavailable", async () => {
+  it("enables Panels and Premiere only after their implementation", async () => {
     const user = userEvent.setup();
     render(<App api={makeApi()} />);
     await user.click(screen.getByRole("button", { name: "Explore the sample" }));
     await screen.findByRole("heading", { name: "Create your hero" });
 
     expect(screen.getByRole("button", { name: "Panels" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Premiere" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Premiere" })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: "Panels" }));
     expect(screen.getByRole("heading", { name: "Direct panel 1" })).toBeInTheDocument();
+  });
+
+  it("reaches the read-only premiere from the final panel", async () => {
+    const user = userEvent.setup();
+    render(<App api={makeApi()} />);
+    await user.click(screen.getByRole("button", { name: "Explore the sample" }));
+    await screen.findByRole("heading", { name: "Create your hero" });
+    await user.click(screen.getByRole("button", { name: "Panels" }));
+
+    await user.click(screen.getByRole("button", { name: "Next: Panel 2" }));
+    await user.click(screen.getByRole("button", { name: "Next: Panel 3" }));
+    await user.click(screen.getByRole("button", { name: "Next: Panel 4" }));
+    const premiere = screen.getByRole("button", { name: "Next: Premiere" });
+    expect(premiere).toBeEnabled();
+    await user.click(premiere);
+
+    const heading = screen.getByRole("heading", { name: "Test Comic" });
+    expect(heading).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Download PDF" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
   it("does not announce Sample mode while configuration is loading", () => {

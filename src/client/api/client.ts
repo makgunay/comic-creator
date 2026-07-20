@@ -70,6 +70,7 @@ export interface ComicApi {
   approvePanelVersion(projectId: string, panelId: string, versionId: string, options?: RequestOptions): Promise<ProjectResponse>;
   rejectPanelCandidate(projectId: string, panelId: string, versionId: string, options?: RequestOptions): Promise<ProjectResponse>;
   imageUrl(projectId: string, imageId: string): string;
+  exportUrl(projectId: string): string;
 }
 
 const unreadableResponse: ApiErrorPayload["error"] = {
@@ -289,6 +290,10 @@ export class ComicApiClient implements ComicApi {
 
   imageUrl(projectId: string, imageId: string): string {
     return `${this.baseUrl}/projects/${encodeURIComponent(projectId)}/images/${encodeURIComponent(imageId)}`;
+  }
+
+  exportUrl(projectId: string): string {
+    return `${this.baseUrl}/projects/${encodeURIComponent(projectId)}/export.pdf`;
   }
 }
 

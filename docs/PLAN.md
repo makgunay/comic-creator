@@ -52,6 +52,9 @@ early feasibility gate.
 ### 3. Build and validate the MVP — active
 
 - [x] Complete Task 6 generation, approval, exact-overlay, and panel-workshop scope.
+- [x] Complete Task 7 read-only Premiere, pagination, approved-only PDF export,
+  deterministic tests, responsive browser QA, and rendered-PDF inspection.
+- [ ] Pass task-scoped Task 7 specification and quality review.
 - [ ] Implement the complete core journey.
 - [ ] Validate happy path and important failure states.
 - [ ] Test setup from a clean environment.

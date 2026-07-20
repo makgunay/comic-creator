@@ -30,6 +30,7 @@ function WorkshopHarness({
       configStatus={configStatus}
       onChange={setProject}
       acceptServerProject={(next) => { setProject(next); return next.id === project.id; }}
+      onNextToPremiere={vi.fn()}
     />
   );
 }
@@ -333,6 +334,7 @@ describe("PanelWorkshop", () => {
         configStatus="enabled"
         onChange={vi.fn()}
         acceptServerProject={() => false}
+        onNextToPremiere={vi.fn()}
       />,
     );
 
@@ -355,6 +357,7 @@ describe("PanelWorkshop", () => {
         configStatus="enabled"
         onChange={vi.fn()}
         acceptServerProject={acceptServerProject}
+        onNextToPremiere={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Re-draw panel" }));

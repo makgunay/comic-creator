@@ -110,3 +110,18 @@ new entry that explicitly supersedes the earlier decision.
   narrative arc legible without causing horizontal overflow on mobile.
 - Consequence: This breakpoint choice controls presentation only. It does not
   cap the number of panels a beat may gain during panel direction.
+
+## D-009 — Preserve source aspect differently for screen and print
+
+- Date: 2026-07-20
+- Status: Accepted
+- Context: Approved artwork is validated as square PNGs, while the accepted
+  Premiere reference uses landscape comic panels.
+- Decision: Use aspect-preserving cover crops inside landscape browser frames,
+  but use square art boxes in the printable PDF so source artwork is never
+  stretched. In both surfaces, overlay coordinates are normalized to the
+  displayed art frame.
+- Rationale: The browser stays faithful to the accepted 2x2 composition while
+  the printed artifact preserves the complete square illustration.
+- Consequence: The browser may crop artwork edges, while the PDF shows the full
+  image. Both surfaces use only approved images and exact local overlay text.

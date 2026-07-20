@@ -62,7 +62,7 @@ export function AppFrame({
         </div>
         <nav className="step-nav" aria-label="Comic workshop steps">
           {steps.map((step, index) => {
-            const available = index <= 3;
+            const available = index <= 4;
             return (
               <button
                 className="step-button"

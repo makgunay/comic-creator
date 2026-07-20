@@ -137,6 +137,7 @@ export function PanelWorkshop({
   onChange,
   acceptServerProject,
   onBackToStory,
+  onNextToPremiere,
   onBusyChange,
 }: {
   project: Project;
@@ -146,6 +147,7 @@ export function PanelWorkshop({
   onChange: (project: Project) => void;
   acceptServerProject: (project: Project) => boolean;
   onBackToStory?: () => void;
+  onNextToPremiere: () => void;
   onBusyChange?: (busy: boolean) => void;
 }) {
   const panels = useMemo(
@@ -465,8 +467,10 @@ export function PanelWorkshop({
         <button
           className="button button-next button-next-blue"
           type="button"
-          disabled={activeIndex === panels.length - 1 || busy}
-          onClick={() => setActiveIndex((index) => Math.min(panels.length - 1, index + 1))}
+          disabled={busy}
+          onClick={() => activeIndex === panels.length - 1
+            ? onNextToPremiere()
+            : setActiveIndex((index) => Math.min(panels.length - 1, index + 1))}
         >
           {activeIndex === panels.length - 1
             ? "Next: Premiere"

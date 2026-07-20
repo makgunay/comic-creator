@@ -5,6 +5,7 @@ import { readConfig, type AppConfig } from "./config";
 import { GenerationService } from "./generation/generation-service";
 import { OpenAIGenerationProvider } from "./generation/openai-provider";
 import { createConfigRouter } from "./routes/config-routes";
+import { createExportRouter } from "./routes/export-routes";
 import { createGenerationRouter } from "./routes/generation-routes";
 import { createProjectRouter } from "./routes/project-routes";
 import { SampleProvider } from "./storage/sample-provider";
@@ -49,6 +50,7 @@ export function createApp(
     "/api",
     createGenerationRouter(dependencies.generationService, dependencies.store),
   );
+  app.use("/api", createExportRouter(dependencies.store));
   app.use((
     error: unknown,
     _request: express.Request,

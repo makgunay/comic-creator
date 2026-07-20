@@ -1034,6 +1034,133 @@ svg {
   justify-self: end;
 }
 
+/* Premiere */
+
+.premiere-screen {
+  display: grid;
+  grid-template-columns: minmax(210px, .68fr) minmax(0, 2.32fr);
+  align-items: start;
+  gap: 28px;
+}
+
+.premiere-intro {
+  position: sticky;
+  top: 18px;
+  display: flex;
+  min-height: 530px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 0 4px;
+}
+
+.premiere-intro h1 {
+  font-size: clamp(2.5rem, 4vw, 3.35rem);
+  line-height: 1.03;
+}
+
+.premiere-byline {
+  margin-top: 28px;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.premiere-controls {
+  display: grid;
+  gap: 18px;
+}
+
+.premiere-controls .button {
+  width: 100%;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.comic-pages {
+  display: grid;
+  min-width: 0;
+  gap: 28px;
+}
+
+.comic-page {
+  min-width: 0;
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 14px 14px 8px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.comic-page-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.comic-panel {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.45;
+  overflow: hidden;
+  border: var(--border);
+  border-radius: 8px;
+  background: #d8cdbb;
+}
+
+.comic-panel > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comic-panel-placeholder {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  margin: 0;
+  padding: 18px;
+  color: var(--navy);
+  background: var(--blue);
+  font-family: var(--display);
+  font-weight: 900;
+  text-align: center;
+}
+
+.comic-overlay {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  overflow-wrap: anywhere;
+  border: 2px solid var(--ink);
+  padding: clamp(3px, .6vw, 8px);
+  color: var(--ink);
+  background: #fff;
+  font-family: var(--display);
+  font-size: clamp(.58rem, 1.1vw, .92rem);
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+  white-space: pre-wrap;
+}
+
+.comic-overlay-dialogue {
+  border-radius: 50%;
+}
+
+.comic-overlay-caption {
+  border-radius: 5px;
+  background: #fff9dc;
+}
+
+.comic-page-number {
+  display: block;
+  margin-top: 9px;
+  font-family: var(--display);
+  text-align: center;
+}
+
 .sr-only {
   position: absolute !important;
   width: 1px !important;
@@ -1073,8 +1200,22 @@ svg {
   }
 
   .hero-screen,
-  .launch-layout {
+  .launch-layout,
+  .premiere-screen {
     grid-template-columns: 1fr;
+  }
+
+  .premiere-intro {
+    position: static;
+    min-height: auto;
+    flex-direction: row;
+    align-items: end;
+    gap: 24px;
+    padding: 8px 0 2px;
+  }
+
+  .premiere-controls {
+    min-width: 220px;
   }
 
   .launch-art {
@@ -1156,6 +1297,38 @@ svg {
 
   .workshop-header {
     gap: 14px;
+  }
+
+  .premiere-intro {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .premiere-intro h1 {
+    font-size: clamp(2.35rem, 12vw, 3.4rem);
+  }
+
+  .premiere-byline {
+    margin-top: 16px;
+  }
+
+  .premiere-controls {
+    min-width: 0;
+  }
+
+  .comic-page {
+    padding: 10px 10px 7px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .comic-page-grid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .comic-overlay {
+    font-size: clamp(.65rem, 3.2vw, .9rem);
   }
 
   .project-title {
