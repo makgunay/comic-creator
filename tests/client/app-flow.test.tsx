@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../src/client/App";
 import type { ComicApi } from "../../src/client/api/client";
 import { makeClientApi } from "../fixtures/client-api-fixtures";
@@ -31,6 +31,54 @@ function makeApi(overrides: Partial<ComicApi> = {}): ComicApi {
 }
 
 describe("App child flow", () => {
+  beforeEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("restores a saved local project from its project URL after a restart", async () => {
+    const project = makeProject();
+    const loadProject = vi.fn().mockResolvedValue(project);
+    window.history.replaceState({}, "", `/?project=${project.id}`);
+
+    render(<App api={makeApi({ loadProject })} />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Create your hero" }),
+    ).toBeInTheDocument();
+    expect(loadProject).toHaveBeenCalledWith(
+      project.id,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it("ignores an invalid project query instead of loading it", () => {
+    const loadProject = vi.fn();
+    window.history.replaceState({}, "", "/?project=unsafe_project");
+
+    render(<App api={makeApi({ loadProject })} />);
+
+    expect(
+      screen.getByRole("heading", { name: "Your story deserves a comic." }),
+    ).toBeInTheDocument();
+    expect(loadProject).not.toHaveBeenCalled();
+  });
+
+  it("gives a newly created comic a reloadable local project URL", async () => {
+    const user = userEvent.setup();
+    const project = makeProject();
+    render(<App api={makeApi({ createProject: vi.fn().mockResolvedValue(project) })} />);
+
+    await user.type(screen.getByLabelText("Comic title"), "Moon Kite Club");
+    await user.click(screen.getByRole("button", { name: "Start a new comic" }));
+    await screen.findByRole("heading", { name: "Create your hero" });
+
+    const url = new URL(window.location.href);
+    expect(url.searchParams.get("project")).toBe(project.id);
+    expect([...url.searchParams.entries()]).toEqual([["project", project.id]]);
+    expect(url.href).not.toContain("Moon Kite Club");
+    expect(url.href).not.toContain(project.localAuthorCredit);
+  });
+
   it("navigates from a new project through hero, style, and story", async () => {
     const user = userEvent.setup();
     render(<App api={makeApi()} />);

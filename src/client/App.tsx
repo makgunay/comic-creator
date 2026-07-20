@@ -14,6 +14,19 @@ import { StorySpine } from "./features/story/StorySpine";
 import { StylePicker } from "./features/style/StylePicker";
 import { useProject } from "./state/use-project";
 
+const safeProjectId = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,127}$/;
+
+function projectIdFromLocation(): string | undefined {
+  const value = new URL(window.location.href).searchParams.get("project");
+  return value && safeProjectId.test(value) ? value : undefined;
+}
+
+function rememberProjectId(projectId: string): void {
+  const url = new URL(window.location.href);
+  url.searchParams.set("project", projectId);
+  window.history.replaceState(window.history.state, "", url);
+}
+
 function ArrowIcon({ direction = "right" }: { direction?: "left" | "right" }) {
   return (
     <svg className={direction === "left" ? "arrow-left" : undefined} viewBox="0 0 24 24" aria-hidden="true">
@@ -137,7 +150,9 @@ function ProjectWorkshop({
 export function App({ api = comicApi }: { api?: ComicApi }) {
   const [configStatus, setConfigStatus] = useState<GenerationConfigStatus>("loading");
   const configRequest = useRef(0);
-  const [projectId, setProjectId] = useState<string>();
+  const [projectId, setProjectId] = useState<string | undefined>(
+    projectIdFromLocation,
+  );
 
   useEffect(() => {
     const requestId = configRequest.current + 1;
@@ -177,7 +192,10 @@ export function App({ api = comicApi }: { api?: ComicApi }) {
     <LaunchScreen
       api={api}
       configStatus={configStatus}
-      onOpenProject={(project) => setProjectId(project.id)}
+      onOpenProject={(project) => {
+        rememberProjectId(project.id);
+        setProjectId(project.id);
+      }}
     />
   );
 }

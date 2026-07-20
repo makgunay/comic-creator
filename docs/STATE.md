@@ -4,75 +4,44 @@ Last updated: 2026-07-20
 
 ## Current stage
 
-Build Week MVP implementation is underway on
-`feature/comic-creator-mvp` with the approved subagent-driven workflow.
+The Build Week solo MVP implementation is complete on
+`feature/comic-creator-mvp`. Deterministic and functional proof passes, but the
+live latency acceptance gate is not passed.
 
 ## Current focus
 
-Review Task 7 now that its Premiere and PDF implementation passes deterministic,
-browser, and rendered-document verification.
+Finish Task 8 verification and review, then ask the user whether to retain or
+revise D-007 before treating Checkpoint 3 as complete.
 
 ## Verified facts
 
-- The Devpost project is a draft; `makgunay/comic-creator` is private on `main`.
-  No open-source license has been added.
-- The approved design is a local React/TypeScript app with an Express server,
-  filesystem persistence, sample mode, and no hosting or accounts.
-- GPT-5.6 Luna compiles constrained visual direction; GPT Image 2 creates
-  reference-guided artwork. Dialogue and captions remain exact local overlays.
-- The minimum comic is four child-authored panels, four per page, with PDF
-  export. The submission category is `Education`; the deadline is 2026-07-21
-  at 5:00 PM Pacific Time.
-- The active implementation plan is
-  `docs/superpowers/plans/2026-07-20-comic-creator-mvp.md`; execution uses one
-  fresh implementer and task-scoped review with accepted visual references.
-- Tasks 1–2 provide a verified React/Vite and Express shell plus a browser-safe
-  domain for beats, panels, asset keys, pagination, and immutable approval.
-- Task 3 provides strict OpenAI adapters, server-owned visual facts, prompt
-  exclusions, fail-closed moderation, product-safe errors, and deterministic
-  configuration loading.
-- A live `gpt-image-2` matched pair measured 29,891 ms for the hero and 32,335
-  ms for the panel with character continuity. The approved panel gate is 35,000
-  ms; no new live request was made for that decision.
-- Task 4 provides contained transactional persistence, recovery quarantine,
-  public config, project CRUD, and an atomic writable sample copy with four
-  validated 1024×1024 PNGs and exact dialogue.
-- Task 5 implements the verified child-facing launch, hero, style, and story
-  workflow with confirmed-only autosave and lifecycle-safe client requests.
-- Task 6 implements hero and panel generation behind strict server routes,
-  explicit candidate approval or dismissal, exact local dialogue/caption
-  overlays, and a responsive panel-directing workshop.
-- Project writes use queued atomic mutation. Generated square PNGs are contained,
-  staged, atomically published, and quarantined on mutation failure; completion
-  merges onto the latest revision without replacing approved art or exact text.
-- Explicit approval preserves all versions; hero replacement affects future
-  generation only. Client responses are guarded by request, project, API, and
-  mount identity. The no-key image route validates membership, paths, containment,
-  regular files, and PNG shape.
-- Task 7 provides a read-only Premiere with ordered four-panel pages, title,
-  author credit, exact overlays, approved-only artwork, honest missing-art
-  placeholders, and a progressively enhanced local PDF download that retains a
-  normal `href` and `download` fallback.
-- PDF export validates every approved project member through the contained asset
-  resolver, uses one inset art box for both square artwork and normalized text
-  geometry, preserves authored ASCII spacing in drawing and extraction, and
-  fails with safe recoverable JSON instead of returning a partial document when
-  approval, assets, glyphs, or legible text fit are invalid.
-- Task 7 deterministic verification passes typecheck, 184/184 tests, production
-  build, and diff check. It includes two-page panels 5–8, candidate exclusion,
-  repeated-space preservation, curly-apostrophe preservation, unsupported-glyph
-  rejection, asset-failure classification, validated browser downloads, and
-  request/project/API/mount lifecycle guards without a live or paid OpenAI request.
-- The in-app browser runtime exposed no available browser, so manual fallback QA
-  used system Chrome. At 1440x900 and 1024x768 the Premiere matches the accepted
-  landscape 2x2 composition; at 390x844 it becomes a coherent one-column comic.
-  All three widths had no horizontal overflow, and the preview had no textareas.
-- A no-key sample download rendered cleanly as one US Letter page with Poppler.
-  A correction proof preserved leading, repeated, and trailing ASCII spaces in
-  raw extraction where line wrapping permits representation. Chrome also showed
-  the recoverable asset-error notice without creating a file, then completed a
-  restored successful download. A separate eight-panel document rendered panels
-  5–8 cleanly on page 2 of 2.
+- Implemented: local React/Express app, filesystem persistence, sample mode,
+  exact overlays, constrained OpenAI generation, explicit version approval,
+  opaque-URL project resume, four-per-page Premiere, and PDF export.
+- Deterministic proof: `npm run verify` covers the shared domain, storage,
+  provider contracts/errors, server routes, client lifecycle behavior, the
+  mocked full journey, pagination, and PDF rendering. The latest count belongs
+  in the Task 8 report and commit evidence: 30 files and 190 tests.
+- Live OpenAI proof: `gpt-5.6-luna` plus `gpt-image-2` completed one approved
+  hero, four approved panels, and one non-destructive redirection. Eight paid
+  image requests total included the two-call smoke. Exact dialogue stayed local.
+- D-007 remains the accepted 35-second observed panel target. Current variance
+  is material: three Task 8 panel image calls exceeded it, while three completed
+  under it. No retry was made to improve the numbers.
+- Manual browser proof: Browser/IAB exposed no available browser, so system
+  Chrome fallback checked desktop, tablet, mobile, keyboard traversal, visible
+  focus, labels, target size, reduced motion, effective 200% reflow, sample
+  persistence, safe export failure, and zero normal-path console errors.
+- Manual PDF proof: live and no-key PDFs rendered as clean, unencrypted,
+  one-page US Letter documents with exact extracted overlays and no clipping,
+  overlap, distortion, or broken glyph.
+- Clean tracked-files setup passed on Node 26: production-only install loaded
+  Sharp, then `npm ci && npm run verify` passed from the staged tracked files.
+- Final Task 8 review and the D-007 acceptance decision are the remaining
+  Checkpoint 3 actions.
+- The Devpost project remains a draft; `makgunay/comic-creator` is private and
+  has no open-source license. The category is `Education`; the deadline is
+  2026-07-21 at 5:00 PM Pacific Time.
 
 ## Active decisions
 
@@ -90,15 +59,20 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Blockers and unknowns
 
-- No Task 7 blocker remains. Live generation was intentionally not exercised;
-  the honest wait state and provider behavior still need end-to-end release QA.
+- Live latency acceptance is partial, not passed: three of six Task 8 panel
+  image samples exceeded D-007. The user must retain or revise that decision
+  before Checkpoint 3 can close.
+- This is not an implementation blocker. Submission media, access, and fields
+  are still incomplete external work.
 
 ## Next actions
 
-1. Complete task-scoped specification and quality review for Task 7.
-2. Implement Task 8: close the journey, judge instructions, and final proof.
+1. Complete Task 8 task-scoped review.
+2. Ask the user to retain or revise D-007 based on the live variance.
+3. Record the public demo and capture the primary `/feedback` session ID.
+4. Grant required private-repository access and finish the Devpost submission.
 
 ## Resume cue
 
-Read the approved MVP design, implementation plan, and local SDD progress
-ledger. Resume at the first task not marked complete.
+Read `README.md`, this state, the active plan, and the Task 8 SDD report. Resume
+with the first incomplete submission action; two-author stretch is unstarted.

@@ -476,7 +476,7 @@ svg {
 }
 
 .hero-form-panel h1 {
-  font-size: clamp(2.65rem, 4vw, 3.35rem);
+  font-size: clamp(2.5rem, 3.4vw, 3rem);
   white-space: nowrap;
 }
 

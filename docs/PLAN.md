@@ -55,19 +55,25 @@ early feasibility gate.
 - [x] Complete Task 7 read-only Premiere, pagination, approved-only PDF export,
   guarded progressive download UX, deterministic tests, responsive browser QA,
   recoverable-failure proof, and rendered-PDF inspection.
-- [ ] Pass task-scoped Task 7 specification and quality review.
-- [ ] Implement the complete core journey.
-- [ ] Validate happy path and important failure states.
-- [ ] Test setup from a clean environment.
-- [ ] Perform manual product and visual QA.
-- [ ] Keep README and project state aligned with verified behavior.
+- [x] Pass task-scoped Task 7 specification and quality review.
+- [x] Implement the complete core journey.
+- [x] Validate the deterministic and functional happy path and important
+  failure states.
+- [x] Test setup from tracked files with Node 26, including production-only
+  Sharp installation and the full deterministic verification command.
+- [x] Perform manual product, accessibility, PDF, and visual QA.
+- [x] Keep README, notices, and project state aligned with verified behavior.
+- [ ] Resolve D-007 acceptance with the user: retain or revise the 35-second
+  observed panel target after three of six Task 8 panel samples exceeded it.
 
-Acceptance: a judge can run or access the project and reproduce the demo.
+Functional acceptance passes: a judge can run the project and reproduce the
+sample demo. Checkpoint closure still requires clean setup proof, Task 8 review,
+and the D-007 decision; live latency acceptance is partial, not passed.
 
 ### 4. Prepare and submit — pending
 
-- [ ] Finalize README and third-party notices.
-- [ ] Record how Codex and GPT-5.6 contributed.
+- [x] Finalize README and third-party notices.
+- [x] Record how Codex and GPT-5.6 contributed.
 - [ ] Capture the primary `/feedback` session ID.
 - [ ] Record and verify the public YouTube demo.
 - [ ] Grant private repository access to the required judging accounts.
