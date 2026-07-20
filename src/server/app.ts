@@ -67,22 +67,24 @@ export function createApp(
       ? error.status
       : undefined;
     const missing = code === "not_found";
+    const tooLarge = status === 413;
     const invalid = error instanceof ZodError
       || code === "invalid_path"
-      || status === 400
-      || status === 413;
+      || status === 400;
     response
-      .status(missing ? 404 : invalid ? 400 : 500)
+      .status(missing ? 404 : tooLarge ? 413 : invalid ? 400 : 500)
       .set("cache-control", "no-store")
       .json({
         error: {
           code: "storage",
           message: missing
             ? "That saved project could not be found."
+            : tooLarge
+              ? "The request is too large."
             : invalid
               ? "The project data needs to be corrected."
               : "The local project could not be saved.",
-          retryable: !missing && !invalid,
+          retryable: !missing && !tooLarge && !invalid,
         },
       });
   });

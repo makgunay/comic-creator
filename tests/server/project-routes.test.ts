@@ -153,13 +153,6 @@ describe("project routes", () => {
         .send("null"),
       await request(app)
         .post("/api/projects")
-        .set("content-type", "application/json")
-        .send(JSON.stringify({
-          title: "x".repeat(1024 * 1024 + 1),
-          localAuthorCredit: "N.",
-        })),
-      await request(app)
-        .post("/api/projects")
         .send({
           title: "Strict input",
           localAuthorCredit: "N.",
@@ -189,6 +182,24 @@ describe("project routes", () => {
         retryable: false,
       },
     });
+    const oversized = await request(app)
+      .post("/api/projects")
+      .set("content-type", "application/json")
+      .send(JSON.stringify({
+        title: "x".repeat(1024 * 1024 + 1),
+        localAuthorCredit: "N.",
+      }));
+    expect(oversized.status).toBe(413);
+    expect(oversized.body).toEqual({
+      error: {
+        code: "storage",
+        message: "The request is too large.",
+        retryable: false,
+      },
+    });
+    expect(JSON.stringify(oversized.body)).not.toMatch(
+      /syntax|payload|entity|stack|limit|internal/i,
+    );
   });
 
   it("copies the exact sample without a key, provider call, or fixture mutation", async () => {
