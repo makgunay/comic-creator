@@ -68,6 +68,10 @@ early feasibility gate.
 - [x] Revalidate the final no-key add-panel journey at 1440, 1024, and 390
   pixel widths in the in-app browser, including saved-project reload, panel
   direction, five-panel navigation, and Premiere page 2.
+- [x] Verify loading, safety-refusal, and retryable-failure states with a
+  deterministic local provider, including preservation of approved artwork,
+  recovered retry controls, retained direction, responsive refusal layout,
+  and a clean browser console.
 - [ ] Resolve D-007 acceptance with the user: retain or revise the 35-second
   observed panel target after three of six Task 8 panel samples exceeded it.
 

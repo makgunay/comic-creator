@@ -51,6 +51,14 @@ complete.
   sampled mobile Panel or Premiere control was smaller than 40 pixels. The
   browser reported no warnings or errors. Generation remained disabled and no
   paid request was made.
+- A separate deterministic-provider browser pass verified the generation
+  states that the no-key sample cannot exercise. At 1024 pixels, the loading
+  state locked editing and navigation while keeping the approved panel and
+  words visible; safety refusal and retryable provider failure each restored
+  re-draw controls, retained the child's direction, and kept approved artwork
+  intact. The refusal state also passed at 390 pixels. Measured desktop and
+  mobile refusal states had no horizontal overflow, the console had no
+  warnings or errors, and no OpenAI request was made.
 - Manual PDF proof: live and no-key PDFs rendered as clean, unencrypted,
   one-page US Letter documents with exact extracted overlays and no clipping,
   overlap, distortion, or broken glyph.
