@@ -12,15 +12,19 @@ export const RenderingChoicesSchema = z
 
 export type RenderingChoices = z.infer<typeof RenderingChoicesSchema>;
 
-export interface VisualInput {
-  heroDescription: string;
-  action: string;
-  setting: string;
-  mood: string;
-  framing: string;
-  styleNotes: string;
-  revisionDirection: string;
-}
+export const VisualInputSchema = z
+  .object({
+    heroDescription: z.string(),
+    action: z.string(),
+    setting: z.string(),
+    mood: z.string(),
+    framing: z.string(),
+    styleNotes: z.string(),
+    revisionDirection: z.string(),
+  })
+  .strict();
+
+export type VisualInput = z.infer<typeof VisualInputSchema>;
 
 export interface GeneratedImage {
   bytes: Buffer;

@@ -18,6 +18,23 @@ const input = {
   revisionDirection: "",
 };
 
+async function createReferenceImage(): Promise<string> {
+  await fs.mkdir(path.resolve("tmp"), { recursive: true });
+  const temporaryDirectory = await fs.mkdtemp(path.resolve("tmp/provider-test-"));
+  const referencePath = path.join(temporaryDirectory, "hero.png");
+  await sharp({
+    create: {
+      width: 1024,
+      height: 1024,
+      channels: 3,
+      background: "#6d28d9",
+    },
+  })
+    .png()
+    .toFile(referencePath);
+  return referencePath;
+}
+
 function createClient(overrides: Record<string, unknown> = {}) {
   return {
     moderations: {
@@ -102,20 +119,42 @@ describe("OpenAIGenerationProvider", () => {
     await expect(provider.chooseRendering(input)).rejects.toThrow();
   });
 
+  it("rejects extra runtime fields before they can reach the rendering model", async () => {
+    const client = createClient();
+    const provider = new OpenAIGenerationProvider(config, { client, log: vi.fn() });
+    const contaminatedInput = {
+      ...input,
+      dialogue: "This must stay local.",
+      caption: "This must stay local too.",
+      localAuthorCredit: "Private child name",
+      arbitrary: "untrusted runtime value",
+    };
+
+    await expect(
+      provider.chooseRendering(contaminatedInput),
+    ).rejects.toMatchObject({ code: "compiler_invariant" });
+    expect(client.responses.parse).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["missing", { results: [], _request_id: "req_missing_moderation" }],
+    [
+      "malformed",
+      { results: [{}], _request_id: "req_malformed_moderation" },
+    ],
+  ])("fails closed when moderation results are %s", async (_label, response) => {
+    const client = createClient({
+      moderations: { create: vi.fn().mockResolvedValue(response) },
+    });
+    const provider = new OpenAIGenerationProvider(config, { client, log: vi.fn() });
+
+    await expect(provider.moderate("private child content")).rejects.toMatchObject({
+      code: "provider",
+    });
+  });
+
   it("constructs latency-bounded hero and supported reference edit requests", async () => {
-    await fs.mkdir(path.resolve("tmp"), { recursive: true });
-    const temporaryDirectory = await fs.mkdtemp(path.resolve("tmp/provider-test-"));
-    const referencePath = path.join(temporaryDirectory, "hero.png");
-    await sharp({
-      create: {
-        width: 1024,
-        height: 1024,
-        channels: 3,
-        background: "#6d28d9",
-      },
-    })
-      .png()
-      .toFile(referencePath);
+    const referencePath = await createReferenceImage();
     const client = createClient();
     const provider = new OpenAIGenerationProvider(config, { client, log: vi.fn() });
 
@@ -171,5 +210,94 @@ describe("OpenAIGenerationProvider", () => {
     expect(logs).not.toContain("private child-authored prompt");
     expect(logs).not.toContain(input.action);
     expect(logs).not.toContain(input.heroDescription);
+  });
+
+  it("logs safe failure metadata for moderation, compiler, and both image calls", async () => {
+    const referencePath = await createReferenceImage();
+    const failureCases = [
+      {
+        operation: "moderate",
+        requestId: "req_failed_moderation",
+        invoke: async (provider: OpenAIGenerationProvider) =>
+          provider.moderate("private moderation content"),
+        client: createClient({
+          moderations: {
+            create: vi.fn().mockRejectedValue(
+              Object.assign(new Error("raw moderation provider body"), {
+                requestID: "req_failed_moderation",
+              }),
+            ),
+          },
+        }),
+      },
+      {
+        operation: "choose_rendering",
+        requestId: "req_failed_rendering",
+        invoke: async (provider: OpenAIGenerationProvider) =>
+          provider.chooseRendering(input),
+        client: createClient({
+          responses: {
+            parse: vi.fn().mockRejectedValue(
+              Object.assign(new Error("raw compiler provider body"), {
+                requestID: "req_failed_rendering",
+              }),
+            ),
+          },
+        }),
+      },
+      {
+        operation: "generate_hero",
+        requestId: "req_failed_hero",
+        invoke: async (provider: OpenAIGenerationProvider) =>
+          provider.generateHero("private hero prompt"),
+        client: createClient({
+          images: {
+            generate: vi.fn().mockRejectedValue(
+              Object.assign(new Error("raw hero provider body"), {
+                requestID: "req_failed_hero",
+              }),
+            ),
+            edit: vi.fn(),
+          },
+        }),
+      },
+      {
+        operation: "generate_panel",
+        requestId: "req_failed_panel",
+        invoke: async (provider: OpenAIGenerationProvider) =>
+          provider.generatePanel(referencePath, "private panel prompt"),
+        client: createClient({
+          images: {
+            generate: vi.fn(),
+            edit: vi.fn().mockRejectedValue(
+              Object.assign(new Error("raw panel provider body"), {
+                requestID: "req_failed_panel",
+              }),
+            ),
+          },
+        }),
+      },
+    ];
+
+    for (const failureCase of failureCases) {
+      const log = vi.fn();
+      const provider = new OpenAIGenerationProvider(config, {
+        client: failureCase.client,
+        log,
+      });
+
+      await expect(failureCase.invoke(provider)).rejects.toThrow();
+      expect(log).toHaveBeenCalledWith({
+        event: "openai_request_failed",
+        operation: failureCase.operation,
+        durationMs: expect.any(Number),
+        providerRequestId: failureCase.requestId,
+      });
+      const serializedLogs = JSON.stringify(log.mock.calls);
+      expect(serializedLogs).not.toContain("raw");
+      expect(serializedLogs).not.toContain("private");
+      expect(serializedLogs).not.toContain(input.action);
+      expect(serializedLogs).not.toContain("test-key");
+    }
   });
 });

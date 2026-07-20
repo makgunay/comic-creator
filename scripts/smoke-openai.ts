@@ -3,6 +3,7 @@ import path from "node:path";
 import { loadEnvironment, readConfig } from "../src/server/config";
 import { OpenAIGenerationProvider } from "../src/server/generation/openai-provider";
 import { buildImagePrompt } from "../src/server/generation/prompt-builder";
+import { evaluateSmokeGate } from "../src/server/generation/smoke-gate";
 
 loadEnvironment();
 
@@ -42,28 +43,24 @@ const panel = await provider.generatePanel(
 const panelPath = path.join(outputDir, "panel.png");
 await fs.writeFile(panelPath, panel.bytes);
 
-if (hero.durationMs > 60_000) {
-  throw new Error(`Hero generation exceeded the 60000ms gate: ${hero.durationMs}ms`);
-}
-if (panel.durationMs > 30_000) {
-  throw new Error(`Panel generation exceeded the 30000ms gate: ${panel.durationMs}ms`);
-}
-
+const summary = evaluateSmokeGate({
+  heroDurationMs: hero.durationMs,
+  panelDurationMs: panel.durationMs,
+});
 console.log(
   JSON.stringify(
     {
-      heroDurationMs: hero.durationMs,
-      panelDurationMs: panel.durationMs,
-      ...(hero.providerRequestId
-        ? { heroProviderRequestId: hero.providerRequestId }
-        : {}),
-      ...(panel.providerRequestId
-        ? { panelProviderRequestId: panel.providerRequestId }
-        : {}),
-      heroPath,
-      panelPath,
+      ...summary,
+      providerRequestIds: {
+        ...(hero.providerRequestId ? { hero: hero.providerRequestId } : {}),
+        ...(panel.providerRequestId ? { panel: panel.providerRequestId } : {}),
+      },
+      artifacts: { heroPath, panelPath },
     },
     null,
     2,
   ),
 );
+if (!summary.gatePassed) {
+  process.exitCode = 1;
+}
