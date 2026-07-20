@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Project } from "../../../domain/project";
+import {
+  CUSTOM_REVISION_MAX_LENGTH,
+  MAX_OVERLAYS_PER_PANEL,
+  PANEL_ACTION_MAX_LENGTH,
+  PANEL_FRAMING_MAX_LENGTH,
+  PANEL_MOOD_MAX_LENGTH,
+  PANEL_SETTING_MAX_LENGTH,
+  type Project,
+} from "../../../domain/project";
 import {
   ComicApiError,
   type ComicApi,
@@ -203,6 +211,7 @@ export function PanelWorkshop({
   };
 
   const addOverlay = (kind: "dialogue" | "caption") => {
+    if (panel.overlays.length >= MAX_OVERLAYS_PER_PANEL) return;
     const overlay: TextOverlay = kind === "dialogue"
       ? {
           id: globalThis.crypto.randomUUID(),
@@ -360,7 +369,7 @@ export function PanelWorkshop({
             <textarea
               value={panel.action}
               disabled={busy}
-              maxLength={800}
+              maxLength={PANEL_ACTION_MAX_LENGTH}
               onChange={(event) => updatePanel((current) => ({ ...current, action: event.target.value }))}
             />
           </label>
@@ -369,7 +378,7 @@ export function PanelWorkshop({
             <input
               value={panel.setting}
               disabled={busy}
-              maxLength={500}
+              maxLength={PANEL_SETTING_MAX_LENGTH}
               onChange={(event) => updatePanel((current) => ({ ...current, setting: event.target.value }))}
             />
           </label>
@@ -379,7 +388,7 @@ export function PanelWorkshop({
               <input
                 value={panel.mood}
                 disabled={busy}
-                maxLength={300}
+                maxLength={PANEL_MOOD_MAX_LENGTH}
                 onChange={(event) => updatePanel((current) => ({ ...current, mood: event.target.value }))}
               />
             </label>
@@ -388,14 +397,14 @@ export function PanelWorkshop({
               <input
                 value={panel.framing}
                 disabled={busy}
-                maxLength={300}
+                maxLength={PANEL_FRAMING_MAX_LENGTH}
                 onChange={(event) => updatePanel((current) => ({ ...current, framing: event.target.value }))}
               />
             </label>
           </div>
           <div className="overlay-actions">
-            <button type="button" disabled={busy} onClick={() => addOverlay("dialogue")}>Add dialogue</button>
-            <button type="button" disabled={busy} onClick={() => addOverlay("caption")}>Add caption</button>
+            <button type="button" disabled={busy || panel.overlays.length >= MAX_OVERLAYS_PER_PANEL} onClick={() => addOverlay("dialogue")}>Add dialogue</button>
+            <button type="button" disabled={busy || panel.overlays.length >= MAX_OVERLAYS_PER_PANEL} onClick={() => addOverlay("caption")}>Add caption</button>
           </div>
           <div className="quick-changes" role="group" aria-label="Quick visual changes">
             {quickChanges.map((change) => (
@@ -415,7 +424,7 @@ export function PanelWorkshop({
             <textarea
               value={customDirection}
               disabled={busy}
-              maxLength={480}
+              maxLength={CUSTOM_REVISION_MAX_LENGTH}
               placeholder="e.g., move the kite higher, show more skyline…"
               onChange={(event) => setCustomDirection(event.target.value)}
             />

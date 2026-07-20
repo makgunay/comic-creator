@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { Project } from "../../../domain/project";
+import {
+  LOCAL_AUTHOR_CREDIT_MAX_LENGTH,
+  PROJECT_TITLE_MAX_LENGTH,
+  type Project,
+} from "../../../domain/project";
 import {
   ComicApiError,
   type ComicApi,
@@ -8,7 +12,7 @@ import {
 import { StatusNotice } from "../../components/StatusNotice";
 
 const sampleArtwork = new URL(
-  "../../../../sample-assets/moon-kite/images/panel-1.png",
+  "../../../../sample-assets/moon-kite/images/sample-art-1.png",
   import.meta.url,
 ).href;
 
@@ -119,7 +123,7 @@ export function LaunchScreen({
               onChange={(event) => setTitle(event.target.value)}
               placeholder="The Clockwork Cloud"
               required
-              maxLength={100}
+              maxLength={PROJECT_TITLE_MAX_LENGTH}
             />
             <label htmlFor="author-credit">Author credit (optional)</label>
             <input
@@ -127,7 +131,7 @@ export function LaunchScreen({
               value={author}
               onChange={(event) => setAuthor(event.target.value)}
               placeholder="A nickname or first name"
-              maxLength={60}
+              maxLength={LOCAL_AUTHOR_CREDIT_MAX_LENGTH}
             />
             <button className="button button-primary" type="submit" disabled={busy !== undefined || !title.trim()}>
               {busy === "create" ? "Starting…" : "Start a new comic"}

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   CreateProjectInputSchema,
+  PANEL_REVISION_MAX_LENGTH,
   ProjectSchema,
   type CreateProjectInput,
   type Project,
@@ -22,6 +23,10 @@ const ApiErrorCodeSchema = z.enum([
   "provider",
   "storage",
   "export",
+  "invalid_project_id",
+  "invalid_panel_id",
+  "invalid_version_id",
+  "invalid_image_id",
 ]);
 
 const ApiErrorResponseSchema = z.strictObject({
@@ -43,7 +48,7 @@ const HeroApprovalResponseSchema = z.strictObject({
 });
 
 const PanelGenerationInputSchema = z.strictObject({
-  revisionDirection: z.string().max(500),
+  revisionDirection: z.string().max(PANEL_REVISION_MAX_LENGTH),
 });
 
 export type PublicConfig = z.infer<typeof ConfigResponseSchema>;
@@ -140,14 +145,11 @@ function requestInit(
   options: RequestOptions,
   body?: unknown,
 ): RequestInit {
+  const jsonAction = method === "POST" || method === "PUT";
   return {
     method,
-    ...(body === undefined
-      ? {}
-      : {
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-        }),
+    ...(jsonAction ? { headers: { "content-type": "application/json" } } : {}),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     ...(options.signal ? { signal: options.signal } : {}),
     keepalive: options.keepalive ?? false,
   };

@@ -1,8 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { ProjectStore } from "../../src/server/storage/project-store";
+import {
+  MAX_GENERATED_IMAGE_BYTES,
+  ProjectStore,
+} from "../../src/server/storage/project-store";
 import { makeProject } from "../fixtures/project-fixtures";
 
 function testRoot(label: string): string {
@@ -60,6 +64,42 @@ describe("ProjectStore", () => {
     await store.save(project);
 
     expect(await store.load(project.id)).toEqual(project);
+  });
+
+  it("publishes only bounded 1024 by 1024 PNG artwork", async () => {
+    const store = new ProjectStore(testRoot("project-store-image-bounds"));
+    const project = makeProject();
+    await store.save(project);
+    const valid = await sharp({
+      create: {
+        width: 1024,
+        height: 1024,
+        channels: 4,
+        background: "#6f51d8",
+      },
+    }).png().toBuffer();
+    const wrongDimensions = await sharp({
+      create: {
+        width: 512,
+        height: 512,
+        channels: 4,
+        background: "#6f51d8",
+      },
+    }).png().toBuffer();
+
+    await expect(
+      store.publishImageAsset(project.id, "valid-art", valid),
+    ).resolves.toBeUndefined();
+    await expect(
+      store.publishImageAsset(project.id, "wrong-size", wrongDimensions),
+    ).rejects.toMatchObject({ code: "provider" });
+    await expect(
+      store.publishImageAsset(
+        project.id,
+        "oversized-art",
+        Buffer.alloc(MAX_GENERATED_IMAGE_BYTES + 1),
+      ),
+    ).rejects.toMatchObject({ code: "provider" });
   });
 
   it("recovers the last valid document from the rolling backup", async () => {

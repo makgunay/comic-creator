@@ -1,14 +1,29 @@
 import { Router, type Response } from "express";
 import { z, ZodError } from "zod";
-import type { Project } from "../../domain/project";
+import {
+  PANEL_REVISION_MAX_LENGTH,
+  type Project,
+} from "../../domain/project";
 import type { GenerationService } from "../generation/generation-service";
 import { toApiError } from "../generation/provider-errors";
 import type { ProjectStore } from "../storage/project-store";
 
 const EmptyBodySchema = z.strictObject({});
 const PanelGenerationBodySchema = z.strictObject({
-  revisionDirection: z.string().max(500),
+  revisionDirection: z.string().max(PANEL_REVISION_MAX_LENGTH),
 });
+const SAFE_ROUTE_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,127}$/;
+type InvalidRouteCode =
+  | "invalid_project_id"
+  | "invalid_panel_id"
+  | "invalid_version_id"
+  | "invalid_image_id";
+
+function assertRouteId(value: string, code: InvalidRouteCode): void {
+  if (!SAFE_ROUTE_ID.test(value)) {
+    throw Object.assign(new Error("Invalid route identifier"), { code });
+  }
+}
 
 function sourceCode(error: unknown): string | undefined {
   return error instanceof Error && "code" in error
@@ -18,9 +33,45 @@ function sourceCode(error: unknown): string | undefined {
 
 function fail(response: Response, error: unknown): void {
   const code = sourceCode(error);
+  const invalidRoute = [
+    "invalid_project_id",
+    "invalid_panel_id",
+    "invalid_version_id",
+    "invalid_image_id",
+  ].includes(code ?? "");
+  if (invalidRoute) {
+    response.status(400).set("cache-control", "no-store").json({
+      error: {
+        code,
+        message: "That local link is not valid.",
+        retryable: false,
+      },
+    });
+    return;
+  }
+  const artworkFailure = code === "reference_artwork";
+  if (artworkFailure) {
+    response.status(409).set("cache-control", "no-store").json({
+      error: {
+        code: "provider",
+        message: "Approved hero artwork could not be read. Choose a hero and try again.",
+        retryable: true,
+      },
+    });
+    return;
+  }
+  if (code === "invalid_path") {
+    response.status(409).set("cache-control", "no-store").json({
+      error: {
+        code: "storage",
+        message: "The saved project storage could not be read.",
+        retryable: true,
+      },
+    });
+    return;
+  }
   const invalid = error instanceof ZodError
-    || code === "invalid_input"
-    || code === "invalid_path";
+    || code === "invalid_input";
   const payload = invalid
     ? {
         error: {
@@ -67,6 +118,7 @@ export function createGenerationRouter(
 
   router.post("/projects/:projectId/hero/generate", async (request, response) => {
     try {
+      assertRouteId(request.params.projectId, "invalid_project_id");
       EmptyBodySchema.parse(request.body ?? {});
       response.status(201).set("cache-control", "no-store").json(
         projectPayload(await requireService(service).generateHero(request.params.projectId)),
@@ -78,6 +130,8 @@ export function createGenerationRouter(
 
   router.post("/projects/:projectId/hero/:imageId/approve", async (request, response) => {
     try {
+      assertRouteId(request.params.projectId, "invalid_project_id");
+      assertRouteId(request.params.imageId, "invalid_image_id");
       EmptyBodySchema.parse(request.body ?? {});
       response.set("cache-control", "no-store").json(
         await requireService(service).approveHero(
@@ -92,6 +146,8 @@ export function createGenerationRouter(
 
   router.post("/projects/:projectId/hero/:imageId/reject", async (request, response) => {
     try {
+      assertRouteId(request.params.projectId, "invalid_project_id");
+      assertRouteId(request.params.imageId, "invalid_image_id");
       EmptyBodySchema.parse(request.body ?? {});
       response.set("cache-control", "no-store").json(projectPayload(
         await requireService(service).rejectHeroCandidate(
@@ -106,6 +162,8 @@ export function createGenerationRouter(
 
   router.post("/projects/:projectId/panels/:panelId/generate", async (request, response) => {
     try {
+      assertRouteId(request.params.projectId, "invalid_project_id");
+      assertRouteId(request.params.panelId, "invalid_panel_id");
       const body = PanelGenerationBodySchema.parse(request.body);
       response.status(201).set("cache-control", "no-store").json(projectPayload(
         await requireService(service).generatePanel(
@@ -123,6 +181,9 @@ export function createGenerationRouter(
     "/projects/:projectId/panels/:panelId/versions/:versionId/approve",
     async (request, response) => {
       try {
+        assertRouteId(request.params.projectId, "invalid_project_id");
+        assertRouteId(request.params.panelId, "invalid_panel_id");
+        assertRouteId(request.params.versionId, "invalid_version_id");
         EmptyBodySchema.parse(request.body ?? {});
         response.set("cache-control", "no-store").json(projectPayload(
           await requireService(service).approvePanelVersion(
@@ -141,6 +202,9 @@ export function createGenerationRouter(
     "/projects/:projectId/panels/:panelId/versions/:versionId/reject",
     async (request, response) => {
       try {
+        assertRouteId(request.params.projectId, "invalid_project_id");
+        assertRouteId(request.params.panelId, "invalid_panel_id");
+        assertRouteId(request.params.versionId, "invalid_version_id");
         EmptyBodySchema.parse(request.body ?? {});
         response.set("cache-control", "no-store").json(projectPayload(
           await requireService(service).rejectPanelCandidate(
@@ -157,6 +221,8 @@ export function createGenerationRouter(
 
   router.get("/projects/:projectId/images/:imageId", async (request, response) => {
     try {
+      assertRouteId(request.params.projectId, "invalid_project_id");
+      assertRouteId(request.params.imageId, "invalid_image_id");
       const project = await store.load(request.params.projectId);
       const imageId = request.params.imageId;
       const member = [
@@ -182,14 +248,19 @@ export function createGenerationRouter(
         .sendFile(filename, (error) => {
           if (error && !response.headersSent) fail(response, error);
         });
-    } catch {
-      response.status(404).set("cache-control", "no-store").json({
-        error: {
-          code: "storage",
-          message: "Image not found.",
-          retryable: false,
-        },
-      });
+    } catch (error) {
+      const code = sourceCode(error);
+      if (code === "invalid_project_id" || code === "invalid_image_id") {
+        fail(response, error);
+      } else {
+        response.status(404).set("cache-control", "no-store").json({
+          error: {
+            code: "storage",
+            message: "Image not found.",
+            retryable: false,
+          },
+        });
+      }
     }
   });
 

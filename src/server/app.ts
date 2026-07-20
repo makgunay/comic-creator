@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import { readConfig, type AppConfig } from "./config";
 import { GenerationService } from "./generation/generation-service";
 import { OpenAIGenerationProvider } from "./generation/openai-provider";
+import { enforceLocalApiBoundary } from "./http/local-api-boundary";
 import { createConfigRouter } from "./routes/config-routes";
 import { createExportRouter } from "./routes/export-routes";
 import { createGenerationRouter } from "./routes/generation-routes";
@@ -18,8 +19,9 @@ export interface AppDependencies {
   generationService?: GenerationService;
 }
 
-function defaultDependencies(): AppDependencies {
-  const config = readConfig();
+export function createAppDependencies(
+  config: AppConfig = readConfig(),
+): AppDependencies {
   const store = new ProjectStore(path.resolve(config.DATA_DIR));
   const generationService = config.OPENAI_API_KEY
     ? new GenerationService(store, new OpenAIGenerationProvider(config))
@@ -36,9 +38,10 @@ function defaultDependencies(): AppDependencies {
 }
 
 export function createApp(
-  dependencies: AppDependencies = defaultDependencies(),
+  dependencies: AppDependencies = createAppDependencies(),
 ): Express {
   const app = express();
+  app.use("/api", enforceLocalApiBoundary);
   app.use(express.json({ limit: "1mb" }));
   app.get("/api/health", (_request, response) => response.json({ ok: true }));
   app.use("/api", createConfigRouter(dependencies.config));

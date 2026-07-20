@@ -1,4 +1,13 @@
 import { z } from "zod";
+import {
+  HERO_DESCRIPTION_MAX_LENGTH,
+  PANEL_ACTION_MAX_LENGTH,
+  PANEL_FRAMING_MAX_LENGTH,
+  PANEL_MOOD_MAX_LENGTH,
+  PANEL_REVISION_MAX_LENGTH,
+  PANEL_SETTING_MAX_LENGTH,
+  STYLE_NOTES_MAX_LENGTH,
+} from "../../domain/project";
 
 export const RenderingChoicesSchema = z
   .object({
@@ -14,13 +23,13 @@ export type RenderingChoices = z.infer<typeof RenderingChoicesSchema>;
 
 export const VisualInputSchema = z
   .object({
-    heroDescription: z.string(),
-    action: z.string(),
-    setting: z.string(),
-    mood: z.string(),
-    framing: z.string(),
-    styleNotes: z.string(),
-    revisionDirection: z.string(),
+    heroDescription: z.string().max(HERO_DESCRIPTION_MAX_LENGTH),
+    action: z.string().max(PANEL_ACTION_MAX_LENGTH),
+    setting: z.string().max(PANEL_SETTING_MAX_LENGTH),
+    mood: z.string().max(PANEL_MOOD_MAX_LENGTH),
+    framing: z.string().max(PANEL_FRAMING_MAX_LENGTH),
+    styleNotes: z.string().max(STYLE_NOTES_MAX_LENGTH),
+    revisionDirection: z.string().max(PANEL_REVISION_MAX_LENGTH),
   })
   .strict();
 

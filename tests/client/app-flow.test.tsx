@@ -141,6 +141,32 @@ describe("App child flow", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
+  it("adds, directs, saves panel five and shows Premiere page two", async () => {
+    const user = userEvent.setup();
+    const project = makeProject();
+    const saveProject = vi.fn().mockImplementation(async (next) => next);
+    render(<App api={makeApi({ copySample: vi.fn().mockResolvedValue(project), saveProject })} />);
+    await user.click(screen.getByRole("button", { name: "Explore the sample" }));
+    await screen.findByRole("heading", { name: "Create your hero" });
+
+    await user.click(screen.getByRole("button", { name: "Story" }));
+    await user.click(screen.getByRole("button", {
+      name: "Add another panel to Problem",
+    }));
+    await user.click(screen.getByRole("button", { name: "Panels" }));
+    await user.click(screen.getByRole("button", { name: "Next: Panel 2" }));
+    await user.click(screen.getByRole("button", { name: "Next: Panel 3" }));
+    expect(screen.getByRole("heading", { name: "Direct panel 3" }))
+      .toBeInTheDocument();
+    await user.type(screen.getByLabelText("What happens?"), "Nova steadies the second kite.");
+    await user.type(screen.getByLabelText("Where are they?"), "Above the observatory.");
+
+    await vi.waitFor(() => expect(saveProject).toHaveBeenCalled());
+    await user.click(screen.getByRole("button", { name: "Premiere" }));
+    expect(screen.getAllByRole("article", { name: /Comic page/ })).toHaveLength(2);
+    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+  });
+
   it("does not announce Sample mode while configuration is loading", () => {
     const config = deferred<{ generationEnabled: boolean }>();
     render(<App api={makeApi({ config: vi.fn().mockReturnValue(config.promise) })} />);

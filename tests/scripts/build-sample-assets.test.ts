@@ -25,8 +25,8 @@ it("quarantines an invalid normalized temp before it can replace known-good outp
   const output = path.join(root, "panel.png");
   const quarantineRoot = path.join(root, "recovery");
   await fs.mkdir(root, { recursive: true });
-  await fs.copyFile("sample-assets/moon-kite/images/panel-1.png", source);
-  await fs.copyFile("sample-assets/moon-kite/images/panel-1.png", output);
+  await fs.copyFile("sample-assets/moon-kite/images/sample-art-1.png", source);
+  await fs.copyFile("sample-assets/moon-kite/images/sample-art-1.png", output);
   const knownGood = await fs.readFile(output);
   const expectedDigest = digest(knownGood);
 

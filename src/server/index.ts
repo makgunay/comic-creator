@@ -1,13 +1,16 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createApp } from "./app";
+import { createApp, createAppDependencies } from "./app";
 import { loadEnvironment, readConfig } from "./config";
+import { prepareServerState } from "./startup";
 
 loadEnvironment();
 const config = readConfig();
 const port = config.PORT;
-const app = createApp();
+const dependencies = createAppDependencies(config);
+await prepareServerState(dependencies.store);
+const app = createApp(dependencies);
 
 if (process.env.NODE_ENV === "production") {
   const root = path.dirname(fileURLToPath(import.meta.url));

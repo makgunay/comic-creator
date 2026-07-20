@@ -1,4 +1,9 @@
-import type { Project } from "../../../domain/project";
+import {
+  BEAT_TEXT_MAX_LENGTH,
+  MAX_PANELS,
+  addPanelToBeat,
+  type Project,
+} from "../../../domain/project";
 
 const labels = {
   setup: "Setup",
@@ -41,17 +46,23 @@ export function StorySpine({
         <span /><span /><span /><span />
       </div>
       <div className="beat-grid">
-        {project.beats.map((beat) => (
-          <label key={beat.id} className={`beat-card beat-${beat.type}`}>
+        {project.beats.map((beat) => {
+          const label = labels[beat.type];
+          const count = beat.panelIds.length;
+          const atLimit = project.panels.length >= MAX_PANELS;
+          const fieldId = `story-beat-${beat.id}`;
+          return (
+          <article key={beat.id} className={`beat-card beat-${beat.type}`}>
             <span className="beat-header">
               <span className="beat-icon"><BeatIcon type={beat.type} /></span>
               <span>
-                <strong>{labels[beat.type]}</strong>
+                <strong>{label}</strong>
                 <span>{hints[beat.type]}</span>
               </span>
             </span>
+            <label className="sr-only" htmlFor={fieldId}>{label}</label>
             <textarea
-              aria-label={labels[beat.type]}
+              id={fieldId}
               value={beat.childText}
               onChange={(event) => onChange({
                 ...project,
@@ -59,10 +70,27 @@ export function StorySpine({
                   ? { ...item, childText: event.target.value }
                   : item),
               })}
-              maxLength={800}
+              maxLength={BEAT_TEXT_MAX_LENGTH}
             />
-          </label>
-        ))}
+            <div className="beat-panel-actions">
+              <span>{count} {count === 1 ? "panel" : "panels"}</span>
+              <button
+                type="button"
+                aria-label={`Add another panel to ${label}`}
+                disabled={atLimit}
+                onClick={() => onChange(addPanelToBeat(project, beat.id))}
+              >
+                Add another panel
+              </button>
+            </div>
+            {atLimit ? (
+              <span className="beat-panel-limit">
+                Comic limit reached: {MAX_PANELS} panels.
+              </span>
+            ) : null}
+          </article>
+          );
+        })}
       </div>
     </section>
   );

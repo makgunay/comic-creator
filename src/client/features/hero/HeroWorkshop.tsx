@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import type { ImageVersion, Project } from "../../../domain/project";
+import {
+  HERO_DESCRIPTION_MAX_LENGTH,
+  type ImageVersion,
+  type Project,
+} from "../../../domain/project";
 import {
   ComicApiError,
   type ComicApi,
@@ -8,7 +12,7 @@ import {
 import type { SaveState } from "../../state/use-project";
 
 const sampleArtwork = new URL(
-  "../../../../sample-assets/moon-kite/images/panel-1.png",
+  "../../../../sample-assets/moon-kite/images/sample-art-1.png",
   import.meta.url,
 ).href;
 
@@ -206,7 +210,7 @@ export function HeroWorkshop({
           disabled={busy}
           onChange={(event) => updateDescription(event.target.value)}
           placeholder="Their clothes, hair, special gear, colors, and anything that makes them unmistakable…"
-          maxLength={1200}
+          maxLength={HERO_DESCRIPTION_MAX_LENGTH}
         />
         <button
           className="button button-primary draw-button"

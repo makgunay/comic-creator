@@ -3,6 +3,7 @@ import OpenAI, { toFile } from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import sharp from "sharp";
 import type { AppConfig } from "../config";
+import { MAX_GENERATED_IMAGE_BYTES } from "../storage/project-store";
 import {
   RenderingChoicesSchema,
   VisualInputSchema,
@@ -210,9 +211,17 @@ export class OpenAIGenerationProvider implements GenerationProvider {
     if (!base64) {
       throw new Error("Image response did not include data");
     }
+    const maximumBase64Length = Math.ceil(MAX_GENERATED_IMAGE_BYTES / 3) * 4 + 4;
+    if (base64.length > maximumBase64Length) {
+      throw providerInvariant("Image response exceeded the local byte budget");
+    }
+    const bytes = Buffer.from(base64, "base64");
+    if (bytes.byteLength > MAX_GENERATED_IMAGE_BYTES) {
+      throw providerInvariant("Image response exceeded the local byte budget");
+    }
     const providerRequestId = safeRequestId(response._request_id);
     return {
-      bytes: Buffer.from(base64, "base64"),
+      bytes,
       ...(providerRequestId ? { providerRequestId } : {}),
     };
   }

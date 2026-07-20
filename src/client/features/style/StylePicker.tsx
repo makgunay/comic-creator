@@ -1,7 +1,10 @@
-import type { Project } from "../../../domain/project";
+import {
+  STYLE_NOTES_MAX_LENGTH,
+  type Project,
+} from "../../../domain/project";
 
 const sampleArtwork = new URL(
-  "../../../../sample-assets/moon-kite/images/panel-1.png",
+  "../../../../sample-assets/moon-kite/images/sample-art-1.png",
   import.meta.url,
 ).href;
 
@@ -73,7 +76,7 @@ export function StylePicker({
           id="style-notes"
           value={value.editedNotes}
           onChange={(event) => onChange({ ...value, editedNotes: event.target.value })}
-          maxLength={800}
+          maxLength={STYLE_NOTES_MAX_LENGTH}
         />
         <button
           className="button button-small button-secondary"

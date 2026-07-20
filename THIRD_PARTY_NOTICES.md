@@ -13,6 +13,7 @@ metadata for this build.
 | react | 19.2.7 | MIT | [facebook/react](https://github.com/facebook/react) |
 | react-dom | 19.2.7 | MIT | [facebook/react](https://github.com/facebook/react) |
 | sharp | 0.35.3 | Apache-2.0 | [lovell/sharp](https://github.com/lovell/sharp) |
+| tsx | 4.23.1 | MIT | [privatenumber/tsx](https://github.com/privatenumber/tsx) |
 | zod | 4.4.3 | MIT | [colinhacks/zod](https://github.com/colinhacks/zod) |
 
 After `npm install`, each package's full license text is available in its

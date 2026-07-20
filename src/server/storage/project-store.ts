@@ -12,6 +12,8 @@ import {
 } from "../../domain/project";
 
 const SAFE_SEGMENT = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,127}$/;
+export const MAX_GENERATED_IMAGE_BYTES = 20 * 1024 * 1024;
+const ARTWORK_DIMENSION = 1024;
 
 export interface ProjectStoreFileSystem {
   mkdir(
@@ -72,6 +74,12 @@ function canRecoverFrom(error: unknown): boolean {
   return error instanceof SyntaxError
     || error instanceof ZodError
     || isMissing(error);
+}
+
+function providerArtworkError(): Error & { code: "provider" } {
+  return Object.assign(new Error("Artwork did not meet the local image contract"), {
+    code: "provider" as const,
+  });
 }
 
 function isWithin(parent: string, child: string): boolean {
@@ -258,6 +266,19 @@ export class ProjectStore {
     }
   }
 
+  private async assertArtworkContract(filename: string): Promise<void> {
+    const stats = await this.fileSystem.lstat(filename);
+    if (stats.size > MAX_GENERATED_IMAGE_BYTES) throw providerArtworkError();
+    const metadata = await sharp(filename).metadata().catch(() => undefined);
+    if (
+      metadata?.format !== "png"
+      || metadata.width !== ARTWORK_DIMENSION
+      || metadata.height !== ARTWORK_DIMENSION
+    ) {
+      throw providerArtworkError();
+    }
+  }
+
   async create(input: CreateProjectInput): Promise<Project> {
     const project = createProject(input);
     await this.save(project);
@@ -437,10 +458,9 @@ export class ProjectStore {
         ...valid.panels.flatMap((panel) => panel.imageVersions),
       ];
       for (const version of versions) {
-        await this.assertRegularContainedFile(
-          stagedImages,
-          stagedAssetPath(version.id),
-        );
+        const filename = stagedAssetPath(version.id);
+        await this.assertRegularContainedFile(stagedImages, filename);
+        await this.assertArtworkContract(filename);
       }
       const stagedDocument = path.join(stagedProject, "project.json");
       await this.fileSystem.writeFile(
@@ -481,6 +501,51 @@ export class ProjectStore {
     throw new ProjectNotFoundError(`No valid project document for ${id}`);
   }
 
+  async recoverInterruptedGenerations(): Promise<number> {
+    const projectsRoot = path.join(this.root, "projects");
+    await this.assertSafePath(projectsRoot);
+    let entries: import("node:fs").Dirent<string>[];
+    try {
+      entries = await fs.readdir(projectsRoot, { withFileTypes: true });
+    } catch (error) {
+      if (isMissing(error)) return 0;
+      throw error;
+    }
+
+    let recoveredProjects = 0;
+    for (const entry of entries) {
+      if (
+        !entry.isDirectory()
+        || !SAFE_SEGMENT.test(entry.name)
+      ) {
+        continue;
+      }
+      try {
+        const persisted = await this.load(entry.name);
+        if (!persisted.panels.some((panel) =>
+          panel.generationStatus === "generating")) {
+          continue;
+        }
+        await this.mutate(entry.name, (project) => {
+          const panels = project.panels.map((panel) => {
+            if (panel.generationStatus !== "generating") return panel;
+            return { ...panel, generationStatus: "failed-retryable" as const };
+          });
+          return {
+            ...project,
+            panels,
+            updatedAt: new Date().toISOString(),
+          };
+        });
+        recoveredProjects += 1;
+      } catch {
+        // One unreadable project must not prevent other local projects from
+        // becoming available. Its existing current/backup documents stay intact.
+      }
+    }
+    return recoveredProjects;
+  }
+
   async publishImageAsset(
     projectId: string,
     imageId: string,
@@ -495,20 +560,13 @@ export class ProjectStore {
     );
     const target = this.assetPath(safeProjectId, safeImageId);
     try {
+      if (bytes.byteLength > MAX_GENERATED_IMAGE_BYTES) {
+        throw providerArtworkError();
+      }
       await this.ensureDirectory(stagingRoot);
       await this.fileSystem.writeFile(staged, bytes);
       await this.assertRegularContainedFile(stagingRoot, staged);
-      const metadata = await sharp(staged).metadata().catch(() => undefined);
-      if (
-        metadata?.format !== "png"
-        || !metadata.width
-        || !metadata.height
-        || metadata.width !== metadata.height
-      ) {
-        throw Object.assign(new Error("Generated artwork was not a square PNG"), {
-          code: "provider",
-        });
-      }
+      await this.assertArtworkContract(staged);
       const images = path.dirname(target);
       await this.assertSafePath(images);
       const imagesStats = await this.fileSystem.lstat(images);
@@ -543,14 +601,10 @@ export class ProjectStore {
     const filename = this.assetPath(projectId, imageId);
     const images = path.dirname(filename);
     await this.assertRegularContainedFile(images, filename);
-    const metadata = await sharp(filename).metadata().catch(() => undefined);
-    if (
-      metadata?.format !== "png"
-      || !metadata.width
-      || !metadata.height
-      || metadata.width !== metadata.height
-    ) {
-      throw new StoragePathError("Image asset must be a square PNG");
+    try {
+      await this.assertArtworkContract(filename);
+    } catch {
+      throw new StoragePathError("Image asset does not meet the artwork contract");
     }
     return filename;
   }

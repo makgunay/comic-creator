@@ -59,7 +59,7 @@ describe("project routes", () => {
   it("uses four deterministic 1024 by 1024 PNG sample fixtures", async () => {
     const metadata = await Promise.all(
       [1, 2, 3, 4].map((index) =>
-        sharp(path.join(fixtureRoot, "images", `panel-${index}.png`)).metadata(),
+        sharp(path.join(fixtureRoot, "images", `sample-art-${index}.png`)).metadata(),
       ),
     );
 
@@ -142,7 +142,7 @@ describe("project routes", () => {
   it("returns non-retryable client errors for malformed or oversized JSON bodies", async () => {
     const { dependencies } = testDependencies("project-routes-json-errors");
     const app = createApp(dependencies);
-    const responses = [
+    const invalidJsonResponses = [
       await request(app)
         .post("/api/projects")
         .set("content-type", "application/json")
@@ -151,7 +151,6 @@ describe("project routes", () => {
         .post("/api/projects")
         .set("content-type", "application/json")
         .send("null"),
-      await request(app).post("/api/projects"),
       await request(app)
         .post("/api/projects")
         .set("content-type", "application/json")
@@ -168,7 +167,7 @@ describe("project routes", () => {
         }),
     ];
 
-    for (const response of responses) {
+    for (const response of invalidJsonResponses) {
       expect(response.status).toBe(400);
       expect(response.body).toEqual({
         error: {
@@ -181,6 +180,15 @@ describe("project routes", () => {
         /syntax|payload|entity|stack|limit|internal/i,
       );
     }
+    const missingJsonContentType = await request(app).post("/api/projects");
+    expect(missingJsonContentType.status).toBe(415);
+    expect(missingJsonContentType.body).toEqual({
+      error: {
+        code: "storage",
+        message: expect.any(String),
+        retryable: false,
+      },
+    });
   });
 
   it("copies the exact sample without a key, provider call, or fixture mutation", async () => {
@@ -194,11 +202,13 @@ describe("project routes", () => {
     );
     const fixtureImagesBefore = await Promise.all(
       [1, 2, 3, 4].map((index) =>
-        fs.readFile(path.join(fixtureRoot, "images", `panel-${index}.png`)),
+        fs.readFile(path.join(fixtureRoot, "images", `sample-art-${index}.png`)),
       ),
     );
 
-    const response = await request(createApp(dependencies)).post("/api/projects/sample");
+    const response = await request(createApp(dependencies))
+      .post("/api/projects/sample")
+      .send({});
 
     expect(response.status).toBe(201);
     const project = ProjectSchema.parse(response.body);
@@ -230,7 +240,7 @@ describe("project routes", () => {
     await Promise.all(
       fixtureImagesBefore.map(async (before, index) => {
         expect(digest(
-          await fs.readFile(path.join(fixtureRoot, "images", `panel-${index + 1}.png`)),
+          await fs.readFile(path.join(fixtureRoot, "images", `sample-art-${index + 1}.png`)),
         )).toBe(digest(before));
       }),
     );
@@ -263,12 +273,12 @@ describe("project routes", () => {
     const external = path.resolve("tmp", `sample-symlink-target-${randomUUID()}.png`);
     await fs.mkdir(path.join(fixture, "images"), { recursive: true });
     await fs.copyFile(path.join(fixtureRoot, "project.json"), path.join(fixture, "project.json"));
-    await fs.copyFile(path.join(fixtureRoot, "images", "panel-1.png"), external);
-    await fs.symlink(external, path.join(fixture, "images", "panel-1.png"));
+    await fs.copyFile(path.join(fixtureRoot, "images", "sample-art-1.png"), external);
+    await fs.symlink(external, path.join(fixture, "images", "sample-art-1.png"));
     for (const index of [2, 3, 4]) {
       await fs.copyFile(
-        path.join(fixtureRoot, "images", `panel-${index}.png`),
-        path.join(fixture, "images", `panel-${index}.png`),
+        path.join(fixtureRoot, "images", `sample-art-${index}.png`),
+        path.join(fixture, "images", `sample-art-${index}.png`),
       );
     }
     const root = path.resolve("tmp", `sample-symlink-store-${randomUUID()}`);
@@ -287,8 +297,8 @@ describe("project routes", () => {
     await fs.mkdir(path.join(fixture, "images"), { recursive: true });
     await fs.copyFile(path.join(fixtureRoot, "project.json"), path.join(fixture, "project.json"));
     await fs.copyFile(
-      path.join(fixtureRoot, "images", "panel-1.png"),
-      path.join(fixture, "images", "panel-1.png"),
+      path.join(fixtureRoot, "images", "sample-art-1.png"),
+      path.join(fixture, "images", "sample-art-1.png"),
     );
     const root = path.resolve("tmp", `sample-partial-store-${randomUUID()}`);
     const store = new ProjectStore(root);

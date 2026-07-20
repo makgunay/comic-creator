@@ -18,25 +18,25 @@ const quarantineRoot = path.resolve("tmp/sample-build-recovery");
 const panelSources = [
   {
     source: "call_wG5POt6gJci71LL1eovyCyMv.png",
-    output: "panel-1.png",
+    output: "sample-art-1.png",
     sha256: "ad311aae3f64e9e2909d016227fa2d5bf6f76d6672c3a2e7d23e9996c6b668c0",
     outputSha256: "97b470b0075d815f6a7376c97c91c4a00712152bab8f2f6137adf682ab2d269e",
   },
   {
     source: "call_hEOCX0BYnA89XtSHpMdPDSqv.png",
-    output: "panel-2.png",
+    output: "sample-art-2.png",
     sha256: "37a59e96e605e80273d1022e21eb0791d937dc675e3bbebf102638db5b3c8390",
     outputSha256: "a108c6a14ac1f1a694b33972c0a078da5a384a477f45641071499641c66dbc65",
   },
   {
     source: "call_VB0LefnOmzSLrXXfFnzUfKL4.png",
-    output: "panel-3.png",
+    output: "sample-art-3.png",
     sha256: "74b5bcdd7deab84c512cfea8a943f01f53118a03ba5f9d9c9b7ad8413c01cb5d",
     outputSha256: "2dd04c975ba2e1cdcc334d308a52eab718b7f8d3e6b7cf6686117cdf377d5a36",
   },
   {
     source: "call_44IIvjV7QfpCLOIhRe552yZQ.png",
-    output: "panel-4.png",
+    output: "sample-art-4.png",
     sha256: "5d92075799c42aa9d071a688bc3c0c8844673a066f3032f398a3dd17837736a6",
     outputSha256: "7c3fed308aac7fd9a81d70dd6762c6585bf96f16378e6b86dd96531464efceba",
   },
@@ -140,7 +140,7 @@ const project = ProjectSchema.parse({
     approvedImageVersionId: `sample-art-${index + 1}`,
     imageVersions: [{
       id: `sample-art-${index + 1}`,
-      localPath: `images/panel-${index + 1}.png`,
+      localPath: `images/sample-art-${index + 1}.png`,
       createdAt: "2026-07-20T00:00:00.000Z",
       childRevisionDirection: "",
       status: "approved",

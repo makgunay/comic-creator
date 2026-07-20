@@ -32,12 +32,16 @@ export function deferred<T>(): Deferred<T> {
 export async function validPngBytes(): Promise<Buffer> {
   return sharp({
     create: {
-      width: 12,
-      height: 12,
+      width: 1024,
+      height: 1024,
       channels: 4,
       background: { r: 111, g: 81, b: 216, alpha: 1 },
     },
-  }).png().toBuffer();
+  }).png({
+    compressionLevel: 9,
+    palette: true,
+    colors: 2,
+  }).toBuffer();
 }
 
 export class RecordingProvider implements GenerationProvider {

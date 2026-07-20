@@ -14,4 +14,16 @@ describe("production runtime dependencies", () => {
     expect(packageJson.dependencies?.sharp).toBe("0.35.3");
     expect(packageJson.devDependencies?.sharp).toBeUndefined();
   });
+
+  it("installs the pinned TypeScript runtime for production start", async () => {
+    const packageJson = JSON.parse(
+      await fs.readFile(path.resolve("package.json"), "utf8"),
+    ) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+
+    expect(packageJson.dependencies?.tsx).toBe("4.23.1");
+    expect(packageJson.devDependencies?.tsx).toBeUndefined();
+  });
 });

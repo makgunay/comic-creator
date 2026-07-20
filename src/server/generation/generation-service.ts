@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { approveImageVersion } from "../../domain/image-versions";
 import {
+  MAX_HERO_IMAGE_VERSIONS,
+  MAX_PANEL_IMAGE_VERSIONS,
   ProjectSchema,
   type ImageVersion,
   type Project,
@@ -111,6 +113,9 @@ export class GenerationService {
         if (!latest.hero.approvedReferenceImageId) {
           throw codedError("invalid_input", "Approve a hero before drawing panels");
         }
+        if (panel.imageVersions.length >= MAX_PANEL_IMAGE_VERSIONS) {
+          throw codedError("invalid_input", "This panel's artwork history is full");
+        }
         return touch({
           ...latest,
           panels: latest.panels.map((item) => item.id === panel.id
@@ -133,8 +138,17 @@ export class GenerationService {
         });
         await this.provider.moderate(Object.values(visualInput).join("\n"));
         const choices = await this.provider.chooseRendering(visualInput);
+        let referencePath: string;
+        try {
+          referencePath = await this.store.resolveImageAsset(projectId, referenceId);
+        } catch {
+          throw codedError(
+            "reference_artwork",
+            "Approved hero artwork could not be read",
+          );
+        }
         const generated = await this.provider.generatePanel(
-          await this.store.resolveImageAsset(projectId, referenceId),
+          referencePath,
           buildImagePrompt(visualInput, choices),
         );
         return await this.publishAndMutate(projectId, generated, (latest, imageId) => {
@@ -174,6 +188,9 @@ export class GenerationService {
       const started = await this.store.load(projectId);
       if (!started.hero.childDescription.trim()) {
         throw codedError("invalid_input", "Describe the hero before drawing");
+      }
+      if (started.hero.imageVersions.length >= MAX_HERO_IMAGE_VERSIONS) {
+        throw codedError("invalid_input", "This hero's artwork history is full");
       }
       const heroFacts = VisualInputSchema.parse({
         heroDescription: started.hero.childDescription,

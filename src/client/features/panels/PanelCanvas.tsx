@@ -1,4 +1,7 @@
-import type { Panel } from "../../../domain/project";
+import {
+  OVERLAY_TEXT_MAX_LENGTH,
+  type Panel,
+} from "../../../domain/project";
 
 export function PanelCanvas({
   panel,
@@ -39,7 +42,7 @@ export function PanelCanvas({
               aria-label={overlayLabel}
               value={overlay.text}
               disabled={disabled}
-              maxLength={500}
+              maxLength={OVERLAY_TEXT_MAX_LENGTH}
               onChange={(event) => onOverlayChange(overlay.id, event.target.value)}
             />
           </label>

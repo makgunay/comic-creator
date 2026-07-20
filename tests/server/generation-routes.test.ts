@@ -89,7 +89,7 @@ describe("generation routes", () => {
     });
 
     expect((await request(app).get(`/api/projects/${sample.id}/images/not-a-member`)).status).toBe(404);
-    expect((await request(app).get(`/api/projects/${sample.id}/images/${encodeURIComponent("../escape")}`)).status).toBe(404);
+    expect((await request(app).get(`/api/projects/${sample.id}/images/${encodeURIComponent("../escape")}`)).status).toBe(400);
 
     const other = await seed(store);
     const foreign = other.hero.approvedReferenceImageId!;
@@ -143,6 +143,96 @@ describe("generation routes", () => {
       .post(`/api/projects/${project.id}/panels/${panelId}/versions/unknown/approve`)
       .send({})).status).toBe(404);
   });
+
+  it("returns distinct nonretryable codes for malformed route identifiers", async () => {
+    const { app, store } = await harness("generation-routes-invalid-ids");
+    const project = await seed(store);
+    const panelId = project.panels[0]!.id;
+    const cases = [
+      {
+        path: `/api/projects/bad_project/panels/${panelId}/generate`,
+        body: { revisionDirection: "" },
+        code: "invalid_project_id",
+      },
+      {
+        path: `/api/projects/${project.id}/panels/bad_panel/generate`,
+        body: { revisionDirection: "" },
+        code: "invalid_panel_id",
+      },
+      {
+        path: `/api/projects/${project.id}/panels/${panelId}/versions/bad_version/approve`,
+        body: {},
+        code: "invalid_version_id",
+      },
+      {
+        path: `/api/projects/${project.id}/hero/bad_image/approve`,
+        body: {},
+        code: "invalid_image_id",
+      },
+    ];
+
+    for (const testCase of cases) {
+      const response = await request(app).post(testCase.path).send(testCase.body);
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({
+        error: {
+          code: testCase.code,
+          message: expect.any(String),
+          retryable: false,
+        },
+      });
+      expect(JSON.stringify(response.body)).not.toMatch(
+        /bad_|path|stack|secret|internal/i,
+      );
+    }
+  });
+
+  it.each(["malformed", "missing", "non-square", "symlink"] as const)(
+    "returns a recoverable 409 and failed-retryable state for %s approved hero artwork",
+    async (failure) => {
+      const { app, store } = await harness(`generation-routes-reference-${failure}`);
+      const project = await seed(store);
+      const panelId = project.panels[0]!.id;
+      const referenceId = project.hero.approvedReferenceImageId!;
+      const referencePath = store.assetPath(project.id, referenceId);
+      if (failure === "malformed") {
+        await fs.writeFile(referencePath, "not a png");
+      } else if (failure === "missing") {
+        await fs.rename(referencePath, `${referencePath}.missing`);
+      } else if (failure === "non-square") {
+        await sharp({
+          create: {
+            width: 1024,
+            height: 512,
+            channels: 4,
+            background: "#6f51d8",
+          },
+        }).png().toFile(referencePath);
+      } else {
+        const target = `${referencePath}.target`;
+        await fs.rename(referencePath, target);
+        await fs.symlink(target, referencePath);
+      }
+
+      const response = await request(app)
+        .post(`/api/projects/${project.id}/panels/${panelId}/generate`)
+        .send({ revisionDirection: "" });
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({
+        error: {
+          code: "provider",
+          message: expect.any(String),
+          retryable: true,
+        },
+      });
+      expect(JSON.stringify(response.body)).not.toMatch(
+        /enoent|png|symlink|path|stack|secret|internal/i,
+      );
+      expect((await store.load(project.id)).panels[0]!.generationStatus)
+        .toBe("failed-retryable");
+    },
+  );
 
   it("returns 429 for simultaneous generation and releases the route lock", async () => {
     const gate = deferred<void>();

@@ -73,7 +73,7 @@
       "imageVersions": [
         {
           "id": "sample-art-1",
-          "localPath": "images/panel-1.png",
+          "localPath": "images/sample-art-1.png",
           "createdAt": "2026-07-20T00:00:00.000Z",
           "childRevisionDirection": "",
           "status": "approved"
@@ -105,7 +105,7 @@
       "imageVersions": [
         {
           "id": "sample-art-2",
-          "localPath": "images/panel-2.png",
+          "localPath": "images/sample-art-2.png",
           "createdAt": "2026-07-20T00:00:00.000Z",
           "childRevisionDirection": "",
           "status": "approved"
@@ -137,7 +137,7 @@
       "imageVersions": [
         {
           "id": "sample-art-3",
-          "localPath": "images/panel-3.png",
+          "localPath": "images/sample-art-3.png",
           "createdAt": "2026-07-20T00:00:00.000Z",
           "childRevisionDirection": "",
           "status": "approved"
@@ -169,7 +169,7 @@
       "imageVersions": [
         {
           "id": "sample-art-4",
-          "localPath": "images/panel-4.png",
+          "localPath": "images/sample-art-4.png",
           "createdAt": "2026-07-20T00:00:00.000Z",
           "childRevisionDirection": "",
           "status": "approved"

@@ -8,7 +8,11 @@ export type ApiErrorCode =
   | "compiler_invariant"
   | "provider"
   | "storage"
-  | "export";
+  | "export"
+  | "invalid_project_id"
+  | "invalid_panel_id"
+  | "invalid_version_id"
+  | "invalid_image_id";
 
 export interface ApiErrorPayload {
   error: {

@@ -28,7 +28,7 @@ function harness(label: string) {
 describe("GET /api/projects/:id/export.pdf", () => {
   it("exports the no-key sample as a no-store PDF download", async () => {
     const { app } = harness("export-route-sample");
-    const sample = await request(app).post("/api/projects/sample");
+    const sample = await request(app).post("/api/projects/sample").send({});
 
     const response = await request(app).get(`/api/projects/${sample.body.id}/export.pdf`);
     const document = await PDFDocument.load(Uint8Array.from(response.body));
@@ -84,20 +84,14 @@ describe("GET /api/projects/:id/export.pdf", () => {
     expect(await store.load(project.id)).toEqual(before);
   });
 
-  it("fails safely when an approved asset declaration or file is invalid", async () => {
+  it("rejects an invalid asset declaration and fails safely when its file is missing", async () => {
     const { app, store } = harness("export-route-invalid-asset");
     const project = await new SampleProvider(fixtureRoot, store).copyToProject();
+    const before = await store.load(project.id);
     const approved = project.panels[0]!.imageVersions[0]!;
     approved.localPath = "images/not-the-approved-id.png";
-    await store.save(project);
-
-    const declaration = await request(app).get(`/api/projects/${project.id}/export.pdf`);
-    expect(declaration.status).toBe(409);
-    expect(declaration.body.error).toMatchObject({
-      code: "export",
-      retryable: true,
-    });
-    expect(JSON.stringify(declaration.body)).not.toMatch(/not-the-approved-id|\/Users\/|tmp\//);
+    await expect(store.save(project)).rejects.toThrow();
+    expect(await store.load(project.id)).toEqual(before);
 
     const valid = await new SampleProvider(fixtureRoot, store).copyToProject();
     const imageId = valid.panels[0]!.approvedImageVersionId!;

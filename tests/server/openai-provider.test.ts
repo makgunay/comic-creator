@@ -5,6 +5,7 @@ import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
 import { readConfig } from "../../src/server/config";
 import { OpenAIGenerationProvider } from "../../src/server/generation/openai-provider";
+import { MAX_GENERATED_IMAGE_BYTES } from "../../src/server/storage/project-store";
 
 const config = readConfig({ OPENAI_API_KEY: "test-key" });
 
@@ -70,6 +71,23 @@ function createClient(overrides: Record<string, unknown> = {}) {
 }
 
 describe("OpenAIGenerationProvider", () => {
+  it("rejects decoded provider images above the bounded byte budget", async () => {
+    const oversized = Buffer.alloc(MAX_GENERATED_IMAGE_BYTES + 1).toString("base64");
+    const client = createClient({
+      images: {
+        generate: vi.fn().mockResolvedValue({
+          data: [{ b64_json: oversized }],
+          _request_id: "req_oversized",
+        }),
+        edit: vi.fn(),
+      },
+    });
+    const provider = new OpenAIGenerationProvider(config, { client, log: vi.fn() });
+
+    await expect(provider.generateHero("hero prompt")).rejects.toMatchObject({
+      code: "provider",
+    });
+  });
   it("constructs the constrained moderation and rendering requests", async () => {
     const client = createClient();
     const provider = new OpenAIGenerationProvider(config, { client, log: vi.fn() });

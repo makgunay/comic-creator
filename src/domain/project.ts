@@ -1,5 +1,26 @@
 import { z } from "zod";
 
+export const PROJECT_TITLE_MAX_LENGTH = 100;
+export const LOCAL_AUTHOR_CREDIT_MAX_LENGTH = 60;
+export const HERO_DESCRIPTION_MAX_LENGTH = 1_200;
+export const STYLE_NOTES_MAX_LENGTH = 800;
+export const BEAT_TEXT_MAX_LENGTH = 800;
+export const PANEL_ACTION_MAX_LENGTH = 800;
+export const PANEL_SETTING_MAX_LENGTH = 500;
+export const PANEL_MOOD_MAX_LENGTH = 300;
+export const PANEL_FRAMING_MAX_LENGTH = 300;
+export const OVERLAY_TEXT_MAX_LENGTH = 500;
+export const OVERLAY_SPEAKER_MAX_LENGTH = 100;
+export const PANEL_REVISION_MAX_LENGTH = 500;
+export const CUSTOM_REVISION_MAX_LENGTH = 480;
+export const MAX_PANELS = 16;
+export const MAX_OVERLAYS_PER_PANEL = 12;
+export const MAX_HERO_IMAGE_VERSIONS = 12;
+export const MAX_PANEL_IMAGE_VERSIONS = 16;
+
+const SAFE_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,127}$/;
+const IdSchema = z.string().regex(SAFE_ID);
+
 export const BeatTypeSchema = z.enum(["setup", "problem", "bigMoment", "ending"]);
 export const StylePresetSchema = z.enum(["cartoon", "manga", "superhero"]);
 export const GenerationStatusSchema = z.enum(["idle", "generating", "failed-retryable"]);
@@ -8,10 +29,10 @@ const isRelativeImageAssetKey = (localPath: string) =>
   /^images\/[a-zA-Z0-9][a-zA-Z0-9-]{0,127}\.png$/.test(localPath);
 
 export const TextOverlaySchema = z.object({
-  id: z.string().min(1),
+  id: IdSchema,
   kind: z.enum(["dialogue", "caption"]),
-  text: z.string(),
-  speaker: z.string().optional(),
+  text: z.string().max(OVERLAY_TEXT_MAX_LENGTH),
+  speaker: z.string().max(OVERLAY_SPEAKER_MAX_LENGTH).optional(),
   x: z.number().min(0).max(1),
   y: z.number().min(0).max(1),
   width: z.number().positive().max(1),
@@ -19,58 +40,66 @@ export const TextOverlaySchema = z.object({
 });
 
 export const ImageVersionSchema = z.object({
-  id: z.string().min(1),
+  id: IdSchema,
   localPath: z.string().refine(isRelativeImageAssetKey, {
     message: "Image paths must be relative images asset keys.",
   }),
   createdAt: z.string().datetime(),
-  sourceReferenceImageId: z.string().optional(),
-  providerRequestId: z.string().optional(),
+  sourceReferenceImageId: IdSchema.optional(),
+  providerRequestId: z.string().max(128).optional(),
   durationMs: z.number().int().nonnegative().optional(),
-  childRevisionDirection: z.string(),
+  childRevisionDirection: z.string().max(PANEL_REVISION_MAX_LENGTH),
   status: z.enum(["candidate", "approved", "rejected"]),
+}).superRefine((version, context) => {
+  if (version.localPath !== `images/${version.id}.png`) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["localPath"],
+      message: "Image path must match its image version ID.",
+    });
+  }
 });
 
 export const PanelSchema = z.object({
-  id: z.string().min(1),
-  beatId: z.string().min(1),
+  id: IdSchema,
+  beatId: IdSchema,
   order: z.number().int().nonnegative(),
-  action: z.string(),
-  setting: z.string(),
-  mood: z.string(),
-  framing: z.string(),
-  overlays: z.array(TextOverlaySchema),
-  approvedImageVersionId: z.string().optional(),
-  imageVersions: z.array(ImageVersionSchema),
+  action: z.string().max(PANEL_ACTION_MAX_LENGTH),
+  setting: z.string().max(PANEL_SETTING_MAX_LENGTH),
+  mood: z.string().max(PANEL_MOOD_MAX_LENGTH),
+  framing: z.string().max(PANEL_FRAMING_MAX_LENGTH),
+  overlays: z.array(TextOverlaySchema).max(MAX_OVERLAYS_PER_PANEL),
+  approvedImageVersionId: IdSchema.optional(),
+  imageVersions: z.array(ImageVersionSchema).max(MAX_PANEL_IMAGE_VERSIONS),
   generationStatus: GenerationStatusSchema,
 });
 
 export const BeatSchema = z.object({
-  id: z.string().min(1),
+  id: IdSchema,
   type: BeatTypeSchema,
-  childText: z.string(),
-  panelIds: z.array(z.string()),
+  childText: z.string().max(BEAT_TEXT_MAX_LENGTH),
+  panelIds: z.array(IdSchema).min(1).max(MAX_PANELS),
 });
 
 const ProjectShapeSchema = z.object({
-  id: z.string().min(1),
+  id: IdSchema,
   schemaVersion: z.literal(1),
-  title: z.string().min(1),
-  localAuthorCredit: z.string(),
+  title: z.string().min(1).max(PROJECT_TITLE_MAX_LENGTH),
+  localAuthorCredit: z.string().max(LOCAL_AUTHOR_CREDIT_MAX_LENGTH),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   hero: z.object({
-    childDescription: z.string(),
-    approvedReferenceImageId: z.string().optional(),
-    imageVersions: z.array(ImageVersionSchema),
+    childDescription: z.string().max(HERO_DESCRIPTION_MAX_LENGTH),
+    approvedReferenceImageId: IdSchema.optional(),
+    imageVersions: z.array(ImageVersionSchema).max(MAX_HERO_IMAGE_VERSIONS),
   }),
   visualStyle: z.object({
     presetId: StylePresetSchema,
-    baselineNotes: z.string(),
-    editedNotes: z.string(),
+    baselineNotes: z.string().max(STYLE_NOTES_MAX_LENGTH),
+    editedNotes: z.string().max(STYLE_NOTES_MAX_LENGTH),
   }),
   beats: z.array(BeatSchema).length(4),
-  panels: z.array(PanelSchema).min(4),
+  panels: z.array(PanelSchema).min(4).max(MAX_PANELS),
 });
 
 export const ProjectSchema = ProjectShapeSchema.superRefine((project, context) => {
@@ -92,6 +121,16 @@ export const ProjectSchema = ProjectShapeSchema.superRefine((project, context) =
       addIssue(["panels", index, "order"], "Panel orders must be unique.");
     }
     panelOrders.add(panel.order);
+    const overlayIds = new Set<string>();
+    panel.overlays.forEach((overlay, overlayIndex) => {
+      if (overlayIds.has(overlay.id)) {
+        addIssue(
+          ["panels", index, "overlays", overlayIndex, "id"],
+          "Overlay IDs must be unique within a panel.",
+        );
+      }
+      overlayIds.add(overlay.id);
+    });
   });
 
   project.beats.forEach((beat, index) => {
@@ -162,6 +201,17 @@ export const ProjectSchema = ProjectShapeSchema.superRefine((project, context) =
   };
 
   validateImageVersionIds(project.hero.imageVersions, ["hero", "imageVersions"]);
+  const heroImageVersionIds = new Set(
+    project.hero.imageVersions.map((version) => version.id),
+  );
+  project.hero.imageVersions.forEach((version, index) => {
+    if (version.sourceReferenceImageId !== undefined) {
+      addIssue(
+        ["hero", "imageVersions", index, "sourceReferenceImageId"],
+        "Hero image versions cannot have a source reference.",
+      );
+    }
+  });
   validateApprovedImageVersion(
     project.hero.imageVersions,
     project.hero.approvedReferenceImageId,
@@ -169,6 +219,17 @@ export const ProjectSchema = ProjectShapeSchema.superRefine((project, context) =
   );
   project.panels.forEach((panel, index) => {
     validateImageVersionIds(panel.imageVersions, ["panels", index, "imageVersions"]);
+    panel.imageVersions.forEach((version, versionIndex) => {
+      if (
+        version.sourceReferenceImageId !== undefined
+        && !heroImageVersionIds.has(version.sourceReferenceImageId)
+      ) {
+        addIssue(
+          ["panels", index, "imageVersions", versionIndex, "sourceReferenceImageId"],
+          "Panel source references must exist in hero image history.",
+        );
+      }
+    });
     validateApprovedImageVersion(
       panel.imageVersions,
       panel.approvedImageVersionId,
@@ -185,8 +246,8 @@ const beatTypes = BeatTypeSchema.options;
 const cartoonNotes = "Bold ink outlines, warm textured color, expressive faces, clear shapes.";
 
 export const CreateProjectInputSchema = z.strictObject({
-  title: z.string().min(1),
-  localAuthorCredit: z.string(),
+  title: z.string().min(1).max(PROJECT_TITLE_MAX_LENGTH),
+  localAuthorCredit: z.string().max(LOCAL_AUTHOR_CREDIT_MAX_LENGTH),
 });
 
 export type CreateProjectInput = z.infer<typeof CreateProjectInputSchema>;
@@ -228,5 +289,51 @@ export function createProject(input: unknown): Project {
     visualStyle: { presetId: "cartoon", baselineNotes: cartoonNotes, editedNotes: cartoonNotes },
     beats,
     panels,
+  });
+}
+
+export function addPanelToBeat(
+  project: Project,
+  beatId: string,
+  createId: () => string = () => globalThis.crypto.randomUUID(),
+): Project {
+  const valid = ProjectSchema.parse(project);
+  if (valid.panels.length >= MAX_PANELS) {
+    throw new Error(`The comic has reached the ${MAX_PANELS}-panel maximum.`);
+  }
+  const beat = valid.beats.find((candidate) => candidate.id === beatId);
+  if (!beat) throw new Error("The selected story beat does not exist.");
+  const members = new Set(beat.panelIds);
+  const lastBeatOrder = Math.max(
+    ...valid.panels
+      .filter((panel) => members.has(panel.id))
+      .map((panel) => panel.order),
+  );
+  const id = createId();
+  const panel: Panel = {
+    id,
+    beatId,
+    order: lastBeatOrder + 1,
+    action: "",
+    setting: "",
+    mood: "",
+    framing: "",
+    overlays: [],
+    imageVersions: [],
+    generationStatus: "idle",
+  };
+  const orderedPanels = valid.panels
+    .map((candidate) => candidate.order > lastBeatOrder
+      ? { ...candidate, order: candidate.order + 1 }
+      : candidate)
+    .concat(panel)
+    .sort((left, right) => left.order - right.order);
+
+  return ProjectSchema.parse({
+    ...valid,
+    beats: valid.beats.map((candidate) => candidate.id === beatId
+      ? { ...candidate, panelIds: [...candidate.panelIds, id] }
+      : candidate),
+    panels: orderedPanels,
   });
 }
