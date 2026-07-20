@@ -386,7 +386,8 @@ child-privacy compliance.
 ## Performance and cost
 
 - Target hero generation: at most 60 seconds.
-- Target panel generation: at most 30 seconds.
+- Target panel generation: at most 35 seconds, with an honest drawing wait
+  state because live performance is observed rather than guaranteed.
 - Display a clear progress state during generation.
 - Use one generation at a time and require explicit revision actions.
 - Default to medium-quality square panel art.

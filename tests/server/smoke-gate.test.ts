@@ -4,25 +4,25 @@ import { evaluateSmokeGate } from "../../src/server/generation/smoke-gate";
 describe("evaluateSmokeGate", () => {
   it("returns a machine-readable passing summary at the latency boundaries", () => {
     expect(
-      evaluateSmokeGate({ heroDurationMs: 60_000, panelDurationMs: 30_000 }),
+      evaluateSmokeGate({ heroDurationMs: 60_000, panelDurationMs: 35_000 }),
     ).toEqual({
       event: "openai_smoke_summary",
       gatePassed: true,
-      limits: { heroDurationMs: 60_000, panelDurationMs: 30_000 },
-      measurements: { heroDurationMs: 60_000, panelDurationMs: 30_000 },
+      limits: { heroDurationMs: 60_000, panelDurationMs: 35_000 },
+      measurements: { heroDurationMs: 60_000, panelDurationMs: 35_000 },
       failures: [],
     });
   });
 
-  it("preserves every failed latency measurement in the summary", () => {
+  it("fails at one millisecond beyond the revised panel boundary", () => {
     expect(
-      evaluateSmokeGate({ heroDurationMs: 60_001, panelDurationMs: 30_001 }),
+      evaluateSmokeGate({ heroDurationMs: 60_000, panelDurationMs: 35_001 }),
     ).toEqual({
       event: "openai_smoke_summary",
       gatePassed: false,
-      limits: { heroDurationMs: 60_000, panelDurationMs: 30_000 },
-      measurements: { heroDurationMs: 60_001, panelDurationMs: 30_001 },
-      failures: ["hero_latency", "panel_latency"],
+      limits: { heroDurationMs: 60_000, panelDurationMs: 35_000 },
+      measurements: { heroDurationMs: 60_000, panelDurationMs: 35_001 },
+      failures: ["panel_latency"],
     });
   });
 });

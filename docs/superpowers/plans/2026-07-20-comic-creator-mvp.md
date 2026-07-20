@@ -1099,7 +1099,7 @@ Expected:
 - exits `0`;
 - writes `tmp/openai-smoke/hero.png` and `panel.png`;
 - hero duration is at most 60,000 ms;
-- panel duration is at most 30,000 ms; and
+- panel duration is at most 35,000 ms; and
 - manual inspection confirms the panel visibly retains Nova’s violet jacket, round goggles, curly hair, and moon-kite spool.
 
 If latency or recognizable continuity fails, stop before Task 4 and revise the reference-image request, output quality, or prompt. Record measured latency and the go/no-go result in `docs/STATE.md`; do not claim consistency from request success alone.

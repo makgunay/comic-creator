@@ -9,7 +9,7 @@ Build Week MVP implementation is underway on
 
 ## Current focus
 
-Resolve Task 3's live panel-latency gate before starting Task 4.
+Begin Task 4 now that Task 3 passes its user-approved live gate.
 
 ## Verified facts
 
@@ -39,16 +39,20 @@ Resolve Task 3's live panel-latency gate before starting Task 4.
   four beats and panels, relative image asset keys, derived pagination, and
   immutable candidate-image approval transitions. Focused domain tests, strict
   typechecking, and full verification pass.
-- Task 3's deterministic OpenAI boundary is implemented and verified: strict
-  rendering-only enums, exact server-owned visual-fact composition, prompt
-  exclusions, injected-client request tests, safe metadata logging, product-safe
-  errors, and `.env.local`-before-`.env` loading. Focused tests pass 15/15;
-  `npm run verify` passes 38/38 tests, typecheck, and production build.
+- Task 3's deterministic OpenAI boundary is implemented and hardened: strict
+  rendering and visual-input schemas, exact server-owned fact composition,
+  prompt exclusions, fail-closed moderation, safe success/failure metadata,
+  product-safe errors, and `.env.local`-before-`.env` loading. `npm run verify`
+  passes 44/44 tests, typecheck, and production build.
 - A live matched-pair smoke created `tmp/openai-smoke/hero.png` and `panel.png`
   with `gpt-image-2`. The final measured hero latency was 29,891 ms and panel
   latency was 32,335 ms. Manual inspection confirmed the panel recognizably
   retained the violet jacket, round goggles, curly hair, and silver moon-kite
   spool from the hero reference.
+- The user approved a 35,000 ms panel gate based on successful continuity and
+  tuned panel measurements of 31,272 and 32,335 ms. The existing matched smoke
+  therefore passes: hero 29,891 ms <= 60,000 ms and panel 32,335 ms <= 35,000
+  ms. No new live request was made for this decision update.
 
 ## Active decisions
 
@@ -57,24 +61,20 @@ Resolve Task 3's live panel-latency gate before starting Task 4.
 - Build a local-only core with sample mode; do not wire hosting or accounts.
 - Preserve story authorship by limiting AI to visual-direction compilation and
   illustration.
+- Use a 35-second live panel gate and present an honest drawing wait state.
 - Treat same-device two-author mode as stretch work after the solo core passes.
 
 See `DECISIONS.md` for rationale and consequences.
 
 ## Blockers and unknowns
 
-- Task 3 is a no-go on latency: recognizable reference continuity passes, hero
-  latency passes the 60,000 ms limit, but panel latency misses the 30,000 ms
-  limit by 2,335 ms after supported request and reference-size tuning.
-- Task 4 must not begin until the panel-latency gate is resolved or explicitly
-  reconsidered.
+- No Task 3 blocker remains. Live generation latency is observed, not
+  guaranteed, and should remain visible during later manual QA.
 
 ## Next actions
 
-1. Review Task 3's deterministic implementation and live evidence.
-2. Decide whether to continue latency investigation or explicitly reconsider
-   the 30,000 ms panel gate based on the observed 31–32 second tuned results.
-3. Keep Task 4 blocked until that decision is recorded.
+1. Implement and review Task 4: local project persistence and sample mode.
+2. Preserve the honest drawing wait state when generation UI work begins.
 
 ## Resume cue
 
