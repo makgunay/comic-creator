@@ -9,7 +9,7 @@ Build Week MVP implementation is underway on
 
 ## Current focus
 
-Begin Task 4 now that Task 3 passes its user-approved live gate.
+Begin Task 5 now that Task 4 passes deterministic verification.
 
 ## Verified facts
 
@@ -53,6 +53,20 @@ Begin Task 4 now that Task 3 passes its user-approved live gate.
   tuned panel measurements of 31,272 and 32,335 ms. The existing matched smoke
   therefore passes: hero 29,891 ms <= 60,000 ms and panel 32,335 ms <= 35,000
   ms. No new live request was made for this decision update.
+- Task 4 added schema-validated local project creation, loading, saving, safe
+  asset resolution, serialized atomic document replacement, one atomic rolling
+  backup, and recovery from a corrupt current document.
+- The injected server factory now exposes public config plus create, load,
+  update, and sample-copy routes with product-safe errors and no secret values.
+- The tracked “Nova and the Moon Kite” sample contains four deterministic
+  1024×1024 PNG panels and the four exact local dialogue overlays. The build
+  script validates source and normalized hashes, and repeat builds are stable.
+- Sample copy creates an independent writable project, normalizes all stored
+  asset keys to `images/<image-id>.png`, leaves tracked fixtures unchanged, and
+  succeeds without an API key, network request, or generation-provider call.
+- Task 4 focused verification passes 21/21 tests. Full `npm run verify` passes
+  strict typechecking, 65/65 deterministic tests, and the production build.
+  No paid or live OpenAI request was made for Task 4.
 
 ## Active decisions
 
@@ -68,12 +82,12 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Blockers and unknowns
 
-- No Task 3 blocker remains. Live generation latency is observed, not
+- No Task 4 blocker remains. Live generation latency is observed, not
   guaranteed, and should remain visible during later manual QA.
 
 ## Next actions
 
-1. Implement and review Task 4: local project persistence and sample mode.
+1. Implement and review Task 5: child-facing hero, style, and story workflow.
 2. Preserve the honest drawing wait state when generation UI work begins.
 
 ## Resume cue

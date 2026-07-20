@@ -1,0 +1,181 @@
+{
+  "id": "sample-moon-kite",
+  "schemaVersion": 1,
+  "title": "Nova and the Moon Kite",
+  "localAuthorCredit": "M.",
+  "createdAt": "2026-07-20T00:00:00.000Z",
+  "updatedAt": "2026-07-20T00:00:00.000Z",
+  "hero": {
+    "childDescription": "Nova wears a violet flight jacket and round goggles and carries a silver moon-kite spool.",
+    "imageVersions": []
+  },
+  "visualStyle": {
+    "presetId": "cartoon",
+    "baselineNotes": "Bold ink outlines, warm textured color, expressive faces, clear shapes.",
+    "editedNotes": "Bold ink outlines, warm textured color, expressive faces, clear shapes."
+  },
+  "beats": [
+    {
+      "id": "beat-setup",
+      "type": "setup",
+      "childText": "Nova tests her moon kite.",
+      "panelIds": [
+        "panel-1"
+      ]
+    },
+    {
+      "id": "beat-problem",
+      "type": "problem",
+      "childText": "A storm cloud catches it.",
+      "panelIds": [
+        "panel-2"
+      ]
+    },
+    {
+      "id": "beat-big-moment",
+      "type": "bigMoment",
+      "childText": "Nova climbs the tower and pulls it free.",
+      "panelIds": [
+        "panel-3"
+      ]
+    },
+    {
+      "id": "beat-ending",
+      "type": "ending",
+      "childText": "The kite lights the whole neighborhood.",
+      "panelIds": [
+        "panel-4"
+      ]
+    }
+  ],
+  "panels": [
+    {
+      "id": "panel-1",
+      "beatId": "beat-setup",
+      "order": 0,
+      "action": "Nova tests her moon kite.",
+      "setting": "Nova’s rooftop workshop at night.",
+      "mood": "hopeful",
+      "framing": "Show Nova, the kite, and the moon clearly.",
+      "overlays": [
+        {
+          "id": "dialogue-1",
+          "kind": "dialogue",
+          "text": "Tonight, I’ll touch the moon!",
+          "speaker": "Nova",
+          "x": 0.06,
+          "y": 0.06,
+          "width": 0.48,
+          "height": 0.22
+        }
+      ],
+      "approvedImageVersionId": "sample-art-1",
+      "imageVersions": [
+        {
+          "id": "sample-art-1",
+          "localPath": "images/panel-1.png",
+          "createdAt": "2026-07-20T00:00:00.000Z",
+          "childRevisionDirection": "",
+          "status": "approved"
+        }
+      ],
+      "generationStatus": "idle"
+    },
+    {
+      "id": "panel-2",
+      "beatId": "beat-problem",
+      "order": 1,
+      "action": "A storm cloud catches it.",
+      "setting": "The city rooftops beneath the moon.",
+      "mood": "worried",
+      "framing": "Show Nova, the kite, and the moon clearly.",
+      "overlays": [
+        {
+          "id": "dialogue-2",
+          "kind": "dialogue",
+          "text": "Oh no—the wind has other plans!",
+          "speaker": "Nova",
+          "x": 0.06,
+          "y": 0.06,
+          "width": 0.48,
+          "height": 0.22
+        }
+      ],
+      "approvedImageVersionId": "sample-art-2",
+      "imageVersions": [
+        {
+          "id": "sample-art-2",
+          "localPath": "images/panel-2.png",
+          "createdAt": "2026-07-20T00:00:00.000Z",
+          "childRevisionDirection": "",
+          "status": "approved"
+        }
+      ],
+      "generationStatus": "idle"
+    },
+    {
+      "id": "panel-3",
+      "beatId": "beat-big-moment",
+      "order": 2,
+      "action": "Nova climbs the tower and pulls it free.",
+      "setting": "The city rooftops beneath the moon.",
+      "mood": "brave",
+      "framing": "Show Nova, the kite, and the moon clearly.",
+      "overlays": [
+        {
+          "id": "dialogue-3",
+          "kind": "dialogue",
+          "text": "Hold on, little kite!",
+          "speaker": "Nova",
+          "x": 0.06,
+          "y": 0.06,
+          "width": 0.48,
+          "height": 0.22
+        }
+      ],
+      "approvedImageVersionId": "sample-art-3",
+      "imageVersions": [
+        {
+          "id": "sample-art-3",
+          "localPath": "images/panel-3.png",
+          "createdAt": "2026-07-20T00:00:00.000Z",
+          "childRevisionDirection": "",
+          "status": "approved"
+        }
+      ],
+      "generationStatus": "idle"
+    },
+    {
+      "id": "panel-4",
+      "beatId": "beat-ending",
+      "order": 3,
+      "action": "The kite lights the whole neighborhood.",
+      "setting": "The city rooftops beneath the moon.",
+      "mood": "joyful",
+      "framing": "Show Nova, the kite, and the moon clearly.",
+      "overlays": [
+        {
+          "id": "dialogue-4",
+          "kind": "dialogue",
+          "text": "We made our own moonlight.",
+          "speaker": "Nova",
+          "x": 0.06,
+          "y": 0.06,
+          "width": 0.48,
+          "height": 0.22
+        }
+      ],
+      "approvedImageVersionId": "sample-art-4",
+      "imageVersions": [
+        {
+          "id": "sample-art-4",
+          "localPath": "images/panel-4.png",
+          "createdAt": "2026-07-20T00:00:00.000Z",
+          "childRevisionDirection": "",
+          "status": "approved"
+        }
+      ],
+      "generationStatus": "idle"
+    }
+  ]
+}
