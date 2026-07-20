@@ -9,7 +9,7 @@ Build Week MVP implementation is underway on
 
 ## Current focus
 
-Begin Task 5 now that Task 4 passes deterministic verification.
+Begin Task 6 now that Task 5 passes deterministic and visual verification.
 
 ## Verified facts
 
@@ -25,20 +25,15 @@ Begin Task 5 now that Task 4 passes deterministic verification.
   page and exportable as PDF.
 - Dialogue and captions are exact local overlays, not image-model text.
 - The final submission category is `Education`.
-- The implementation plan is
-  `docs/superpowers/plans/2026-07-20-comic-creator-mvp.md`.
+- The implementation plan is `docs/superpowers/plans/2026-07-20-comic-creator-mvp.md`.
 - The user chose subagent-driven execution: one fresh implementer per task,
   followed by task-scoped specification and quality review.
-- Desktop and mobile visual references have been generated from the approved
-  product design for later browser-fidelity verification.
+- Approved desktop and mobile references guide browser-fidelity verification.
 - No open-source license has been added.
 - The official submission deadline is 2026-07-21 at 5:00 PM Pacific Time.
-- Task 1 established the local TypeScript application foundation: a React/Vite
-  client, Express server, and deterministic health test all pass verification.
-- Task 2 established the browser-safe, schema-validated shared project domain:
-  four beats and panels, relative image asset keys, derived pagination, and
-  immutable candidate-image approval transitions. Focused domain tests, strict
-  typechecking, and full verification pass.
+- Task 1's React/Vite client, Express server, and health test pass verification.
+- Task 2's browser-safe domain validates beats, panels, asset keys, pagination,
+  and immutable candidate approval; focused and full verification pass.
 - Task 3's deterministic OpenAI boundary is implemented and hardened: strict
   rendering and visual-input schemas, exact server-owned fact composition,
   prompt exclusions, fail-closed moderation, safe success/failure metadata,
@@ -53,24 +48,28 @@ Begin Task 5 now that Task 4 passes deterministic verification.
   tuned panel measurements of 31,272 and 32,335 ms. The existing matched smoke
   therefore passes: hero 29,891 ms <= 60,000 ms and panel 32,335 ms <= 35,000
   ms. No new live request was made for this decision update.
-- Task 4 adds schema-valid persistence, canonical asset keys, contained paths,
-  whole-directory first saves, paired current/backup rollback, and recovery.
-- The injected server factory now exposes public config plus create, load,
-  update, and sample-copy routes. Strict create-input and body-parser failures
-  return non-retryable product-safe client errors with no secret values.
-- The tracked sample has four deterministic 1024×1024 PNGs and exact dialogue.
-  The build validates temporary dimensions and hashes before atomic replacement;
-  invalid temporary outputs move to recovery quarantine.
-- Sample copy accepts only contained regular fixtures, atomically publishes a
-  complete staged project, and quarantines failures without live orphan assets.
-  It leaves fixtures unchanged and needs no API key, network, or provider call.
-- Single-failure transaction paths preserve byte-identical current and previous.
-  On backup plus rollback failure, `AggregateError` exposes both causes; valid
-  v3 current/v1 previous remain, v2 is quarantined, and staging is empty. Stronger
-  pairing needs generation directories/atomic pointers beyond this local MVP.
-- Task 4 focused verification passes 50/50 tests. Full `npm run verify` passes
-  strict typechecking, 78/78 deterministic tests, and the production build.
-  No paid or live OpenAI request was made for Task 4.
+- Task 4 provides contained persistence, paired rollback, recovery quarantine,
+  public config, project CRUD, and an atomic sample copy that leaves fixtures
+  unchanged. Its four 1024×1024 PNGs and exact dialogue are validated.
+- Task 4 full verification passed strict typechecking, 78/78 deterministic tests,
+  and the production build without a paid or live OpenAI request.
+- Task 5 implements child-facing launch, hero, style, and story. Launch exposes
+  exactly `Start a new comic` and `Explore the sample`; optional author credit
+  remains local project data.
+- The typed browser API validates responses, normalizes malformed/network errors,
+  and rejects schema-shaped messages that resemble credentials.
+- Autosave uses functional transitions, a 500 ms debounce, latest-edit pagehide
+  flush, confirmed-only `Saved`, monotonic revisions, and abort/context guards;
+  stale loads, timers, or save responses cannot replace newer child work.
+- Style presets seed baseline and editable notes; edits change only `editedNotes`
+  and Reset restores baseline. Story has exactly four child-authored beat cards
+  without imposing a four-panel domain cap.
+- Task 5 focused client verification passes 21/21 tests. Full `npm run verify`
+  passes typecheck, 99/99 tests, and build without a live or paid OpenAI request.
+- Browser fallback QA at 1440×900 and 390×844 verified new/sample navigation,
+  16 px text, 44 px targets, no overflow, and no console errors. Accepted and
+  rendered PNGs were inspected directly. Disabled-generation notice behavior is
+  deterministic-test proof, not a separately forced browser configuration check.
 
 ## Active decisions
 
@@ -86,13 +85,15 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Blockers and unknowns
 
-- No Task 4 blocker remains. Live generation latency is observed, not
+- No Task 5 blocker remains. Live generation latency is observed, not
   guaranteed, and should remain visible during later manual QA.
 
 ## Next actions
 
-1. Implement and review Task 5: child-facing hero, style, and story workflow.
-2. Preserve the honest drawing wait state when generation UI work begins.
+1. Implement and review Task 6: panel generation, exact overlays, and explicit
+   image-version approval.
+2. Preserve the honest drawing wait state and never replace approved artwork
+   automatically.
 
 ## Resume cue
 

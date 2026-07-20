@@ -1,13 +1,23 @@
 :root {
   color: #202020;
   background: #f4ead7;
-  font-family: Inter, ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  font-family: "Avenir Next", Avenir, "Trebuchet MS", system-ui, sans-serif;
   --paper: #f4ead7;
   --card: #fffdf7;
   --ink: #202020;
-  --purple: #6f51d8;
+  --violet: #6f51d8;
+  --violet-dark: #5236b8;
+  --navy: #17213f;
+  --coral: #f47f6b;
+  --yellow: #ffd95c;
   --mint: #d9f2e8;
   --amber: #ffe6bc;
   --blue: #daeffd;
+  --lavender: #e3d9ff;
+  --green: #17785b;
   --focus: #174d72;
+  --border: 3px solid var(--ink);
+  --shadow: 6px 6px 0 var(--ink);
+  --radius: 14px;
+  --display: "Arial Rounded MT Bold", "Avenir Next", system-ui, sans-serif;
 }
