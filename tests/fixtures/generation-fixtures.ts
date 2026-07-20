@@ -1,6 +1,4 @@
 import fs from "node:fs/promises";
-import path from "node:path";
-import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import type { Project } from "../../src/domain/project";
 import type {
@@ -12,6 +10,7 @@ import type {
 import { GenerationService } from "../../src/server/generation/generation-service";
 import { ProjectStore } from "../../src/server/storage/project-store";
 import { makeImageVersion, makeProject } from "./project-fixtures";
+import { testTmpPath } from "../support/tmp-lifecycle";
 
 export interface Deferred<T> {
   promise: Promise<T>;
@@ -130,7 +129,7 @@ export async function createGenerationHarness(
   project: Project,
   provider?: RecordingProvider,
 ) {
-  const root = path.resolve("tmp", `generation-${randomUUID()}`);
+  const root = testTmpPath("generation");
   const store = new ProjectStore(root);
   await store.save(project);
   const bytes = await validPngBytes();

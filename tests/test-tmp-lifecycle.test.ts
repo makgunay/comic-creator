@@ -1,41 +1,57 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
-  cleanupNewTmpEntries,
-  diffTmpChildren,
-  literalTmpPaths,
+  cleanupOwnedTmpRoot,
+  createOwnedTmpRoot,
+  makeTestTmpDirectory,
+  testTmpPath,
 } from "./support/tmp-lifecycle";
 
 describe("suite tmp lifecycle helpers", () => {
-  it("selects only direct children created after the suite snapshot", () => {
-    expect(diffTmpChildren(
-      new Set(["retained", "another-retained"]),
-      new Set(["retained", "another-retained", "new-a", "new-b"]),
-    )).toEqual(["new-a", "new-b"]);
+  it("retains an unrelated sibling created after setup and selects only the owned run root", async () => {
+    const sandbox = await makeTestTmpDirectory("lifecycle-sandbox");
+    const owned = await createOwnedTmpRoot(sandbox);
+    const unrelated = path.join(sandbox, "unrelated-created-late");
+    await fs.mkdir(unrelated);
+    const moveToTrash = vi.fn().mockResolvedValue(undefined);
+
+    await cleanupOwnedTmpRoot(owned, moveToTrash);
+
+    expect(moveToTrash).toHaveBeenCalledWith([owned.root], { glob: false });
+    await expect(fs.lstat(unrelated)).resolves.toMatchObject({});
   });
 
-  it("builds literal contained paths and rejects traversal or nested entries", () => {
-    const root = path.resolve("tmp");
-    expect(literalTmpPaths(root, ["new-a", "new-b"])).toEqual([
-      path.join(root, "new-a"),
-      path.join(root, "new-b"),
-    ]);
-    expect(() => literalTmpPaths(root, ["../escape"])).toThrow();
-    expect(() => literalTmpPaths(root, ["nested/child"])).toThrow();
+  it("rejects cleanup when the ownership marker was changed", async () => {
+    const sandbox = await makeTestTmpDirectory("marker-sandbox");
+    const owned = await createOwnedTmpRoot(sandbox);
+    await fs.writeFile(owned.markerPath, "{}\n", "utf8");
+    const moveToTrash = vi.fn().mockResolvedValue(undefined);
+
+    await expect(cleanupOwnedTmpRoot(owned, moveToTrash)).rejects.toThrow(
+      "ownership marker does not match",
+    );
+    expect(moveToTrash).not.toHaveBeenCalled();
   });
 
-  it("passes only new literal paths to Trash with globbing disabled", async () => {
-    const trash = vi.fn().mockResolvedValue(undefined);
-    await cleanupNewTmpEntries(
-      path.resolve("tmp"),
-      new Set(["retained"]),
-      async () => new Set(["retained", "new-entry"]),
-      trash,
-    );
+  it("surfaces Trash failures from teardown cleanup", async () => {
+    const sandbox = await makeTestTmpDirectory("failure-sandbox");
+    const owned = await createOwnedTmpRoot(sandbox);
+    const failure = new Error("Trash unavailable");
 
-    expect(trash).toHaveBeenCalledWith(
-      [path.resolve("tmp/new-entry")],
-      { glob: false },
-    );
+    await expect(cleanupOwnedTmpRoot(
+      owned,
+      vi.fn().mockRejectedValue(failure),
+    )).rejects.toBe(failure);
+  });
+
+  it("builds unique paths and directories beneath the provided run root", async () => {
+    const file = testTmpPath("asset", ".png");
+    const directory = await makeTestTmpDirectory("store");
+
+    expect(path.dirname(file)).toBe(path.dirname(directory));
+    expect(path.basename(file)).toMatch(/^asset-[0-9a-f-]{36}\.png$/);
+    await expect(fs.lstat(directory)).resolves.toMatchObject({});
+    expect(() => testTmpPath("../escape")).toThrow();
   });
 });

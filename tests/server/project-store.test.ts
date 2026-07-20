@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import {
@@ -8,9 +7,10 @@ import {
   ProjectStore,
 } from "../../src/server/storage/project-store";
 import { makeProject } from "../fixtures/project-fixtures";
+import { testTmpPath } from "../support/tmp-lifecycle";
 
 function testRoot(label: string): string {
-  return path.resolve("tmp", `${label}-${randomUUID()}`);
+  return testTmpPath(label);
 }
 
 async function entriesOrEmpty(directory: string): Promise<string[]> {

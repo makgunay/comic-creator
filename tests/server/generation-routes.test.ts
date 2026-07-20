@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 import request from "supertest";
 import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
@@ -16,11 +15,12 @@ import {
   RecordingProvider,
   validPngBytes,
 } from "../fixtures/generation-fixtures";
+import { testTmpPath } from "../support/tmp-lifecycle";
 
 const fixtureRoot = path.resolve("sample-assets/moon-kite");
 
 async function harness(label: string, withService = true) {
-  const root = path.resolve("tmp", `${label}-${randomUUID()}`);
+  const root = testTmpPath(label);
   const store = new ProjectStore(root);
   const bytes = await validPngBytes();
   const provider = new RecordingProvider(bytes);
@@ -236,7 +236,7 @@ describe("generation routes", () => {
 
   it("returns 429 for simultaneous generation and releases the route lock", async () => {
     const gate = deferred<void>();
-    const root = path.resolve("tmp", `generation-routes-busy-${randomUUID()}`);
+    const root = testTmpPath("generation-routes-busy");
     const store = new ProjectStore(root);
     const provider = new RecordingProvider(await validPngBytes(), gate);
     const service = new GenerationService(store, provider);

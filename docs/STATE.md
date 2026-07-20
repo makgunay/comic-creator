@@ -22,7 +22,7 @@ complete.
 - Deterministic proof: `npm run verify` covers the shared domain, storage,
   provider contracts/errors, server routes, client lifecycle behavior, the
   mocked full journey, multi-page pagination, and PDF rendering. The final
-  correction count is 34 files and 223 tests.
+  correction count is 34 files and 224 tests.
 - Local boundary proof rejects hostile Host/Origin and cross-site browser
   requests before API routes, requires JSON for writes, preserves safe `413`
   responses, and keeps route identifiers and image membership contained.

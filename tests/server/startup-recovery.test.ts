@@ -1,14 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { ProjectStore } from "../../src/server/storage/project-store";
 import { prepareServerState } from "../../src/server/startup";
 import { makeProject } from "../fixtures/project-fixtures";
+import { testTmpPath } from "../support/tmp-lifecycle";
 
 describe("production startup recovery", () => {
   it("recovers interrupted panels only when startup recovery is invoked", async () => {
-    const root = path.resolve("tmp", `startup-recovery-${randomUUID()}`);
+    const root = testTmpPath("startup-recovery");
     const firstProcess = new ProjectStore(root);
     const project = makeProject();
     project.panels[0]!.generationStatus = "generating";
@@ -29,7 +29,7 @@ describe("production startup recovery", () => {
   });
 
   it("runs restart recovery for the normal unset-NODE_ENV server start path", async () => {
-    const root = path.resolve("tmp", `startup-unset-env-${randomUUID()}`);
+    const root = testTmpPath("startup-unset-env");
     const store = new ProjectStore(root);
     const project = makeProject();
     project.panels[0]!.generationStatus = "generating";

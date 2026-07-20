@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { expect, it } from "vitest";
 import { normalizePanelAsset } from "../../scripts/sample-asset-builder";
+import { testTmpPath } from "../support/tmp-lifecycle";
 
 function digest(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -20,7 +21,7 @@ async function entriesOrEmpty(directory: string): Promise<string[]> {
 }
 
 it("quarantines an invalid normalized temp before it can replace known-good output", async () => {
-  const root = path.resolve("tmp", `sample-builder-${randomUUID()}`);
+  const root = testTmpPath("sample-builder");
   const source = path.join(root, "source.png");
   const output = path.join(root, "panel.png");
   const quarantineRoot = path.join(root, "recovery");

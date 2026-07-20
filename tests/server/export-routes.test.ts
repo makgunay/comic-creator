@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 import { PDFDocument } from "pdf-lib";
 import request from "supertest";
 import sharp from "sharp";
@@ -9,11 +8,12 @@ import { createApp } from "../../src/server/app";
 import { readConfig } from "../../src/server/config";
 import { SampleProvider } from "../../src/server/storage/sample-provider";
 import { ProjectStore } from "../../src/server/storage/project-store";
+import { testTmpPath } from "../support/tmp-lifecycle";
 
 const fixtureRoot = path.resolve("sample-assets/moon-kite");
 
 function harness(label: string) {
-  const root = path.resolve("tmp", `${label}-${randomUUID()}`);
+  const root = testTmpPath(label);
   const store = new ProjectStore(root);
   return {
     store,

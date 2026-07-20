@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readConfig } from "../../src/server/config";
 import { OpenAIGenerationProvider } from "../../src/server/generation/openai-provider";
 import { MAX_GENERATED_IMAGE_BYTES } from "../../src/server/storage/project-store";
+import { makeTestTmpDirectory } from "../support/tmp-lifecycle";
 
 const config = readConfig({ OPENAI_API_KEY: "test-key" });
 
@@ -20,8 +21,7 @@ const input = {
 };
 
 async function createReferenceImage(): Promise<string> {
-  await fs.mkdir(path.resolve("tmp"), { recursive: true });
-  const temporaryDirectory = await fs.mkdtemp(path.resolve("tmp/provider-test-"));
+  const temporaryDirectory = await makeTestTmpDirectory("provider-test");
   const referencePath = path.join(temporaryDirectory, "hero.png");
   await sharp({
     create: {

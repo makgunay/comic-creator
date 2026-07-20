@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import request from "supertest";
 import sharp from "sharp";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +10,7 @@ import { readConfig } from "../../src/server/config";
 import { SampleProvider } from "../../src/server/storage/sample-provider";
 import { ProjectStore } from "../../src/server/storage/project-store";
 import { makeProject } from "../fixtures/project-fixtures";
+import { testTmpPath } from "../support/tmp-lifecycle";
 
 const fixtureRoot = path.resolve("sample-assets/moon-kite");
 const overlayText = [
@@ -35,7 +36,7 @@ async function entriesOrEmpty(directory: string): Promise<string[]> {
 }
 
 function testDependencies(label: string, withKey = false) {
-  const root = path.resolve("tmp", `${label}-${randomUUID()}`);
+  const root = testTmpPath(label);
   const store = new ProjectStore(root);
   return {
     root,
@@ -280,8 +281,8 @@ describe("project routes", () => {
   });
 
   it("rejects symlinked sample images and publishes no live project", async () => {
-    const fixture = path.resolve("tmp", `sample-symlink-${randomUUID()}`);
-    const external = path.resolve("tmp", `sample-symlink-target-${randomUUID()}.png`);
+    const fixture = testTmpPath("sample-symlink");
+    const external = testTmpPath("sample-symlink-target", ".png");
     await fs.mkdir(path.join(fixture, "images"), { recursive: true });
     await fs.copyFile(path.join(fixtureRoot, "project.json"), path.join(fixture, "project.json"));
     await fs.copyFile(path.join(fixtureRoot, "images", "sample-art-1.png"), external);
@@ -292,7 +293,7 @@ describe("project routes", () => {
         path.join(fixture, "images", `sample-art-${index}.png`),
       );
     }
-    const root = path.resolve("tmp", `sample-symlink-store-${randomUUID()}`);
+    const root = testTmpPath("sample-symlink-store");
     const store = new ProjectStore(root);
     const provider = new SampleProvider(fixture, store);
 
@@ -304,14 +305,14 @@ describe("project routes", () => {
   });
 
   it("quarantines a partial sample transaction outside the live namespace", async () => {
-    const fixture = path.resolve("tmp", `sample-partial-${randomUUID()}`);
+    const fixture = testTmpPath("sample-partial");
     await fs.mkdir(path.join(fixture, "images"), { recursive: true });
     await fs.copyFile(path.join(fixtureRoot, "project.json"), path.join(fixture, "project.json"));
     await fs.copyFile(
       path.join(fixtureRoot, "images", "sample-art-1.png"),
       path.join(fixture, "images", "sample-art-1.png"),
     );
-    const root = path.resolve("tmp", `sample-partial-store-${randomUUID()}`);
+    const root = testTmpPath("sample-partial-store");
     const store = new ProjectStore(root);
     const provider = new SampleProvider(fixture, store);
 

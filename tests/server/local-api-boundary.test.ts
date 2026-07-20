@@ -1,16 +1,16 @@
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../../src/server/app";
 import { readConfig } from "../../src/server/config";
 import { SampleProvider } from "../../src/server/storage/sample-provider";
 import { ProjectStore } from "../../src/server/storage/project-store";
+import { testTmpPath } from "../support/tmp-lifecycle";
 
 const fixtureRoot = path.resolve("sample-assets/moon-kite");
 
 function appFor(label: string) {
-  const root = path.resolve("tmp", `${label}-${randomUUID()}`);
+  const root = testTmpPath(label);
   const store = new ProjectStore(root);
   return createApp({
     config: readConfig({ DATA_DIR: root }),

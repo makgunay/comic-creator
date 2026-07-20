@@ -1,16 +1,21 @@
 import path from "node:path";
+import type { TestProject } from "vitest/node";
 import {
-  cleanupNewTmpEntries,
-  snapshotTmpChildren,
+  cleanupOwnedTmpRoot,
+  createOwnedTmpRoot,
+  type OwnedTmpRoot,
 } from "./support/tmp-lifecycle";
 
-const repoTmp = path.resolve("tmp");
-let before = new Set<string>();
+let ownedRoot: OwnedTmpRoot | undefined;
 
-export async function setup(): Promise<void> {
-  before = await snapshotTmpChildren(repoTmp);
+export async function setup(project: TestProject): Promise<void> {
+  ownedRoot = await createOwnedTmpRoot(path.resolve("tmp"));
+  project.provide("comicCreatorTmpRoot", ownedRoot);
 }
 
 export async function teardown(): Promise<void> {
-  await cleanupNewTmpEntries(repoTmp, before);
+  if (!ownedRoot) {
+    throw new Error("Vitest temporary root was not established.");
+  }
+  await cleanupOwnedTmpRoot(ownedRoot);
 }

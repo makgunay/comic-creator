@@ -6,6 +6,7 @@ import {
   loadEnvironment,
   readConfig,
 } from "../../src/server/config";
+import { makeTestTmpDirectory } from "../support/tmp-lifecycle";
 
 describe("server config", () => {
   it("uses only the required OpenAI models", () => {
@@ -24,8 +25,7 @@ describe("server config", () => {
   });
 
   it("keeps process values, then prefers .env.local values over .env values", async () => {
-    await fs.mkdir(path.resolve("tmp"), { recursive: true });
-    const directory = await fs.mkdtemp(path.resolve("tmp/config-test-"));
+    const directory = await makeTestTmpDirectory("config-test");
     await fs.writeFile(
       path.join(directory, ".env.local"),
       "LOCAL_FIRST=from-local\nPROCESS_FIRST=from-local\n",
