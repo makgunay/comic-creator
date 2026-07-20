@@ -1,9 +1,12 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { createHash, randomUUID } from "node:crypto";
-import sharp from "sharp";
+import { randomUUID } from "node:crypto";
 import { ProjectSchema } from "../src/domain/project";
+import {
+  normalizePanelAsset,
+  validateNormalizedPanel,
+} from "./sample-asset-builder";
 
 const generatedRoot = path.resolve(
   os.homedir(),
@@ -11,6 +14,7 @@ const generatedRoot = path.resolve(
 );
 const fixtureRoot = path.resolve("sample-assets/moon-kite");
 const imageRoot = path.join(fixtureRoot, "images");
+const quarantineRoot = path.resolve("tmp/sample-build-recovery");
 const panelSources = [
   {
     source: "call_wG5POt6gJci71LL1eovyCyMv.png",
@@ -38,71 +42,24 @@ const panelSources = [
   },
 ] as const;
 
-function digest(bytes: Buffer): string {
-  return createHash("sha256").update(bytes).digest("hex");
-}
-
-async function validateSource(filename: string, expectedDigest: string): Promise<Buffer> {
-  const bytes = await fs.readFile(filename);
-  if (digest(bytes) !== expectedDigest) {
-    throw new Error(`Unexpected sample image bytes for ${filename}`);
-  }
-  const metadata = await sharp(bytes).metadata();
-  if (
-    metadata.format !== "png"
-    || metadata.width === undefined
-    || metadata.height === undefined
-    || metadata.width !== metadata.height
-    || metadata.width < 1024
-  ) {
-    throw new Error(`Sample source must be a square PNG at least 1024px: ${filename}`);
-  }
-  return bytes;
-}
-
-async function validateOutput(filename: string, expectedDigest: string): Promise<void> {
-  const bytes = await fs.readFile(filename);
-  if (digest(bytes) !== expectedDigest) {
-    throw new Error(`Unexpected normalized sample image bytes for ${filename}`);
-  }
-  const metadata = await sharp(bytes).metadata();
-  if (
-    metadata.format !== "png"
-    || metadata.width !== 1024
-    || metadata.height !== 1024
-  ) {
-    throw new Error(`Sample output must be an exact 1024px square PNG: ${filename}`);
-  }
-}
-
 await fs.mkdir(imageRoot, { recursive: true });
 for (const panel of panelSources) {
   const source = path.join(generatedRoot, panel.source);
   const output = path.join(imageRoot, panel.output);
   try {
-    const sourceBytes = await validateSource(source, panel.sha256);
-    const temporary = `${output}.${randomUUID()}.tmp`;
-    await sharp(sourceBytes)
-      .rotate()
-      .resize(1024, 1024, {
-        fit: "cover",
-        kernel: sharp.kernel.lanczos3,
-        position: "centre",
-      })
-      .png({
-        adaptiveFiltering: false,
-        compressionLevel: 9,
-        effort: 10,
-        palette: false,
-      })
-      .toFile(temporary);
-    await fs.rename(temporary, output);
+    await normalizePanelAsset({
+      source,
+      output,
+      sourceSha256: panel.sha256,
+      outputSha256: panel.outputSha256,
+      quarantineRoot,
+    });
   } catch (error) {
     if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
       throw error;
     }
   }
-  await validateOutput(output, panel.outputSha256);
+  await validateNormalizedPanel(output, panel.outputSha256);
 }
 
 const beatDefinitions = [

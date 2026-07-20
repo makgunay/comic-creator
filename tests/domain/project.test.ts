@@ -49,7 +49,21 @@ describe("createProject", () => {
       status: "candidate" as const,
     };
 
-    for (const localPath of ["images/../escape.png", "images/..", "/tmp/image-1.png", "images\\image.png", "images/a/../image.png"]) {
+    for (const localPath of [
+      "images/../escape.png",
+      "images/..",
+      "images/.",
+      "images/./image.png",
+      "/tmp/image-1.png",
+      "images\\image.png",
+      "images/a/../image.png",
+      "images/nested/image.png",
+      "images/image",
+      "images/image.jpg",
+      "images/.hidden.png",
+      "images/image_name.png",
+      "images/image.png/extra",
+    ]) {
       expect(ProjectSchema.safeParse({
         ...project,
         hero: { ...project.hero, imageVersions: [{ ...version, localPath }] },

@@ -1,14 +1,46 @@
 import fs from "node:fs/promises";
+import fsSync, { type Stats } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 import {
   createProject,
   ProjectSchema,
+  type CreateProjectInput,
   type Project,
 } from "../../domain/project";
 
 const SAFE_SEGMENT = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,127}$/;
+
+export interface ProjectStoreFileSystem {
+  mkdir(
+    directory: string,
+    options?: { recursive?: boolean },
+  ): Promise<string | undefined>;
+  readFile(filename: string, encoding: "utf8"): Promise<string>;
+  writeFile(
+    filename: string,
+    data: string | Uint8Array,
+    encoding?: BufferEncoding,
+  ): Promise<void>;
+  copyFile(source: string, target: string, mode?: number): Promise<void>;
+  rename(source: string, target: string): Promise<void>;
+  lstat(filename: string): Promise<Stats>;
+  realpath(filename: string): Promise<string>;
+}
+
+const nodeFileSystem: ProjectStoreFileSystem = {
+  mkdir: (directory, options) => fs.mkdir(directory, options),
+  readFile: (filename, encoding) => fs.readFile(filename, encoding),
+  writeFile: (filename, data, encoding) =>
+    encoding
+      ? fs.writeFile(filename, data, encoding)
+      : fs.writeFile(filename, data),
+  copyFile: (source, target, mode) => fs.copyFile(source, target, mode),
+  rename: (source, target) => fs.rename(source, target),
+  lstat: (filename) => fs.lstat(filename),
+  realpath: (filename) => fs.realpath(filename),
+};
 
 class StoragePathError extends Error {
   readonly code = "invalid_path";
@@ -25,19 +57,38 @@ function validateSegment(value: string, label: string): string {
   return value;
 }
 
+function errorCode(error: unknown): string | undefined {
+  return error instanceof Error && "code" in error
+    ? String(error.code)
+    : undefined;
+}
+
+function isMissing(error: unknown): boolean {
+  return errorCode(error) === "ENOENT";
+}
+
 function canRecoverFrom(error: unknown): boolean {
   return error instanceof SyntaxError
     || error instanceof ZodError
-    || (error instanceof Error
-      && "code" in error
-      && (error as NodeJS.ErrnoException).code === "ENOENT");
+    || isMissing(error);
+}
+
+function isWithin(parent: string, child: string): boolean {
+  const relative = path.relative(parent, child);
+  return relative === ""
+    || (!relative.startsWith(`..${path.sep}`)
+      && relative !== ".."
+      && !path.isAbsolute(relative));
 }
 
 export class ProjectStore {
   private readonly root: string;
   private readonly writes = new Map<string, Promise<void>>();
 
-  constructor(root: string) {
+  constructor(
+    root: string,
+    private readonly fileSystem: ProjectStoreFileSystem = nodeFileSystem,
+  ) {
     this.root = path.resolve(root);
   }
 
@@ -45,11 +96,149 @@ export class ProjectStore {
     return path.join(this.root, "projects", validateSegment(id, "project id"));
   }
 
-  private async readDocument(filename: string): Promise<Project> {
-    return ProjectSchema.parse(JSON.parse(await fs.readFile(filename, "utf8")));
+  private assertWithinRoot(target: string): void {
+    if (!isWithin(this.root, path.resolve(target))) {
+      throw new StoragePathError("Storage path escaped its configured root");
+    }
   }
 
-  async create(input: { title: string; localAuthorCredit: string }): Promise<Project> {
+  private async lstatIfExists(filename: string): Promise<Stats | undefined> {
+    try {
+      return await this.fileSystem.lstat(filename);
+    } catch (error) {
+      if (isMissing(error)) return undefined;
+      throw error;
+    }
+  }
+
+  private async assertSafePath(target: string): Promise<void> {
+    const resolved = path.resolve(target);
+    this.assertWithinRoot(resolved);
+    const relative = path.relative(this.root, resolved);
+    const components = relative ? relative.split(path.sep) : [];
+    let current = this.root;
+    const paths = [current];
+    for (const component of components) {
+      current = path.join(current, component);
+      paths.push(current);
+    }
+
+    for (const [index, candidate] of paths.entries()) {
+      const stats = await this.lstatIfExists(candidate);
+      if (!stats) return;
+      if (stats.isSymbolicLink()) {
+        throw new StoragePathError("Symlinks are not allowed in storage paths");
+      }
+      if (index < paths.length - 1 && !stats.isDirectory()) {
+        throw new StoragePathError("Storage path component is not a directory");
+      }
+    }
+  }
+
+  private assertSafePathSync(target: string): void {
+    const resolved = path.resolve(target);
+    this.assertWithinRoot(resolved);
+    const relative = path.relative(this.root, resolved);
+    const components = relative ? relative.split(path.sep) : [];
+    let current = this.root;
+    const paths = [current];
+    for (const component of components) {
+      current = path.join(current, component);
+      paths.push(current);
+    }
+
+    for (const [index, candidate] of paths.entries()) {
+      let stats: Stats;
+      try {
+        stats = fsSync.lstatSync(candidate);
+      } catch (error) {
+        if (isMissing(error)) return;
+        throw error;
+      }
+      if (stats.isSymbolicLink()) {
+        throw new StoragePathError("Symlinks are not allowed in storage paths");
+      }
+      if (index < paths.length - 1 && !stats.isDirectory()) {
+        throw new StoragePathError("Storage path component is not a directory");
+      }
+    }
+  }
+
+  private async ensureDirectory(directory: string): Promise<void> {
+    const resolved = path.resolve(directory);
+    this.assertWithinRoot(resolved);
+    if (resolved !== this.root) {
+      await this.ensureDirectory(path.dirname(resolved));
+    }
+    const existing = await this.lstatIfExists(resolved);
+    if (existing) {
+      if (existing.isSymbolicLink() || !existing.isDirectory()) {
+        throw new StoragePathError("Storage directory is not a real directory");
+      }
+      return;
+    }
+    await this.fileSystem.mkdir(resolved, { recursive: resolved === this.root });
+    const created = await this.fileSystem.lstat(resolved);
+    if (created.isSymbolicLink() || !created.isDirectory()) {
+      throw new StoragePathError("Storage directory is not a real directory");
+    }
+  }
+
+  private async readDocument(filename: string): Promise<Project> {
+    return ProjectSchema.parse(
+      JSON.parse(await this.fileSystem.readFile(filename, "utf8")),
+    );
+  }
+
+  private async quarantineExisting(
+    candidates: readonly string[],
+    label: string,
+  ): Promise<void> {
+    const existing: string[] = [];
+    for (const candidate of candidates) {
+      if (await this.lstatIfExists(candidate)) existing.push(candidate);
+    }
+    if (existing.length === 0) return;
+
+    const recoveryRoot = path.join(this.root, "recovery");
+    await this.ensureDirectory(recoveryRoot);
+    const quarantine = path.join(
+      recoveryRoot,
+      `${validateSegment(label, "recovery label")}-${randomUUID()}`,
+    );
+    await this.ensureDirectory(quarantine);
+    for (const candidate of existing) {
+      await this.fileSystem.rename(
+        candidate,
+        path.join(quarantine, path.basename(candidate)),
+      );
+    }
+  }
+
+  private async assertRegularContainedFile(
+    container: string,
+    filename: string,
+  ): Promise<void> {
+    await this.assertSafePath(container);
+    await this.assertSafePath(filename);
+    const containerStats = await this.fileSystem.lstat(container);
+    const fileStats = await this.fileSystem.lstat(filename);
+    if (
+      containerStats.isSymbolicLink()
+      || !containerStats.isDirectory()
+      || fileStats.isSymbolicLink()
+      || !fileStats.isFile()
+    ) {
+      throw new StoragePathError("Asset must be a regular contained file");
+    }
+    const realContainer = await this.fileSystem.realpath(container);
+    const realFile = await this.fileSystem.realpath(filename);
+    if (!isWithin(realContainer, realFile) || realContainer === realFile) {
+      throw new StoragePathError("Asset escaped its staging directory");
+    }
+  }
+
+  async create(input: CreateProjectInput): Promise<Project> {
     const project = createProject(input);
     await this.save(project);
     return project;
@@ -60,32 +249,52 @@ export class ProjectStore {
     const previousWrite = this.writes.get(valid.id) ?? Promise.resolve();
     const write = previousWrite.catch(() => undefined).then(async () => {
       const directory = this.projectDir(valid.id);
+      const images = path.join(directory, "images");
       const current = path.join(directory, "project.json");
       const previous = path.join(directory, "project.previous.json");
-      const temporary = path.join(
-        directory,
-        `project.${randomUUID()}.tmp.json`,
-      );
-      await fs.mkdir(path.join(directory, "images"), { recursive: true });
-      await fs.writeFile(
-        temporary,
-        `${JSON.stringify(valid, null, 2)}\n`,
-        "utf8",
-      );
+      const staging = path.join(this.root, "staging");
+      const token = `save-${valid.id}-${randomUUID()}`;
+      const stagedCurrent = path.join(staging, `${token}.project.json`);
+      const stagedPrevious = path.join(staging, `${token}.previous.json`);
 
+      await this.ensureDirectory(staging);
+      await this.assertSafePath(directory);
+      const liveDirectoryExisted = Boolean(
+        await this.lstatIfExists(directory),
+      );
       try {
-        await this.readDocument(current);
-        const backupTemporary = path.join(
-          directory,
-          `project.previous.${randomUUID()}.tmp.json`,
+        await this.fileSystem.writeFile(
+          stagedCurrent,
+          `${JSON.stringify(valid, null, 2)}\n`,
+          "utf8",
         );
-        await fs.copyFile(current, backupTemporary);
-        await fs.rename(backupTemporary, previous);
-      } catch (error) {
-        if (!canRecoverFrom(error)) throw error;
-      }
+        await this.readDocument(stagedCurrent);
+        await this.ensureDirectory(images);
+        await this.assertSafePath(current);
+        await this.assertSafePath(previous);
 
-      await fs.rename(temporary, current);
+        try {
+          await this.readDocument(current);
+          await this.fileSystem.copyFile(current, stagedPrevious);
+          await this.readDocument(stagedPrevious);
+          await this.fileSystem.rename(stagedPrevious, previous);
+        } catch (error) {
+          if (!canRecoverFrom(error)) throw error;
+        }
+
+        await this.assertSafePath(current);
+        await this.fileSystem.rename(stagedCurrent, current);
+      } catch (error) {
+        await this.quarantineExisting(
+          [
+            stagedCurrent,
+            stagedPrevious,
+            ...(liveDirectoryExisted ? [] : [directory]),
+          ],
+          `save-${valid.id}`,
+        );
+        throw error;
+      }
     });
 
     this.writes.set(valid.id, write);
@@ -98,11 +307,74 @@ export class ProjectStore {
     }
   }
 
+  async createWithAssets(
+    project: Project,
+    populate: (assetPath: (imageId: string) => string) => Promise<void>,
+  ): Promise<void> {
+    const valid = ProjectSchema.parse(project);
+    const stagingRoot = path.join(this.root, "staging");
+    await this.ensureDirectory(stagingRoot);
+    const stagedProject = path.join(
+      stagingRoot,
+      `project-${valid.id}-${randomUUID()}`,
+    );
+    const stagedImages = path.join(stagedProject, "images");
+    const liveProject = this.projectDir(valid.id);
+
+    const stagedAssetPath = (imageId: string) => {
+      const filename = path.join(
+        stagedImages,
+        `${validateSegment(imageId, "image id")}.png`,
+      );
+      this.assertSafePathSync(filename);
+      return filename;
+    };
+
+    try {
+      await this.ensureDirectory(stagedImages);
+      await populate(stagedAssetPath);
+      const versions = [
+        ...valid.hero.imageVersions,
+        ...valid.panels.flatMap((panel) => panel.imageVersions),
+      ];
+      for (const version of versions) {
+        await this.assertRegularContainedFile(
+          stagedImages,
+          stagedAssetPath(version.id),
+        );
+      }
+      const stagedDocument = path.join(stagedProject, "project.json");
+      await this.fileSystem.writeFile(
+        stagedDocument,
+        `${JSON.stringify(valid, null, 2)}\n`,
+        "utf8",
+      );
+      await this.readDocument(stagedDocument);
+      await this.ensureDirectory(path.join(this.root, "projects"));
+      await this.assertSafePath(liveProject);
+      if (await this.lstatIfExists(liveProject)) {
+        throw Object.assign(new Error("Project already exists"), {
+          code: "already_exists",
+        });
+      }
+      await this.fileSystem.rename(stagedProject, liveProject);
+    } catch (error) {
+      await this.quarantineExisting(
+        [stagedProject],
+        `project-${valid.id}`,
+      );
+      throw error;
+    }
+  }
+
   async load(id: string): Promise<Project> {
     const directory = this.projectDir(id);
+    await this.assertSafePath(directory);
     for (const filename of ["project.json", "project.previous.json"]) {
+      const document = path.join(directory, filename);
       try {
-        return await this.readDocument(path.join(directory, filename));
+        await this.assertSafePath(document);
+        return await this.readDocument(document);
       } catch (error) {
         if (!canRecoverFrom(error)) throw error;
       }
@@ -111,10 +383,12 @@ export class ProjectStore {
   }
 
   assetPath(projectId: string, imageId: string): string {
-    return path.join(
+    const filename = path.join(
       this.projectDir(projectId),
       "images",
       `${validateSegment(imageId, "image id")}.png`,
     );
+    this.assertSafePathSync(filename);
+    return filename;
   }
 }

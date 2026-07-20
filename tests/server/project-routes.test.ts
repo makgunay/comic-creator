@@ -23,6 +23,17 @@ function digest(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+async function entriesOrEmpty(directory: string): Promise<string[]> {
+  try {
+    return await fs.readdir(directory);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+}
+
 function testDependencies(label: string, withKey = false) {
   const root = path.resolve("tmp", `${label}-${randomUUID()}`);
   const store = new ProjectStore(root);
@@ -128,6 +139,50 @@ describe("project routes", () => {
     }
   });
 
+  it("returns non-retryable client errors for malformed or oversized JSON bodies", async () => {
+    const { dependencies } = testDependencies("project-routes-json-errors");
+    const app = createApp(dependencies);
+    const responses = [
+      await request(app)
+        .post("/api/projects")
+        .set("content-type", "application/json")
+        .send("{broken"),
+      await request(app)
+        .post("/api/projects")
+        .set("content-type", "application/json")
+        .send("null"),
+      await request(app).post("/api/projects"),
+      await request(app)
+        .post("/api/projects")
+        .set("content-type", "application/json")
+        .send(JSON.stringify({
+          title: "x".repeat(1024 * 1024 + 1),
+          localAuthorCredit: "N.",
+        })),
+      await request(app)
+        .post("/api/projects")
+        .send({
+          title: "Strict input",
+          localAuthorCredit: "N.",
+          unexpected: "must be rejected",
+        }),
+    ];
+
+    for (const response of responses) {
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({
+        error: {
+          code: "storage",
+          message: "The project data needs to be corrected.",
+          retryable: false,
+        },
+      });
+      expect(JSON.stringify(response.body)).not.toMatch(
+        /syntax|payload|entity|stack|limit|internal/i,
+      );
+    }
+  });
+
   it("copies the exact sample without a key, provider call, or fixture mutation", async () => {
     const { store, dependencies } = testDependencies("sample-route");
     const networkCall = vi.fn(() => {
@@ -201,5 +256,46 @@ describe("project routes", () => {
     );
     expect(fixture.id).toBe("sample-moon-kite");
     expect(fixture.panels.map((panel) => panel.overlays[0]?.text)).toEqual(overlayText);
+  });
+
+  it("rejects symlinked sample images and publishes no live project", async () => {
+    const fixture = path.resolve("tmp", `sample-symlink-${randomUUID()}`);
+    const external = path.resolve("tmp", `sample-symlink-target-${randomUUID()}.png`);
+    await fs.mkdir(path.join(fixture, "images"), { recursive: true });
+    await fs.copyFile(path.join(fixtureRoot, "project.json"), path.join(fixture, "project.json"));
+    await fs.copyFile(path.join(fixtureRoot, "images", "panel-1.png"), external);
+    await fs.symlink(external, path.join(fixture, "images", "panel-1.png"));
+    for (const index of [2, 3, 4]) {
+      await fs.copyFile(
+        path.join(fixtureRoot, "images", `panel-${index}.png`),
+        path.join(fixture, "images", `panel-${index}.png`),
+      );
+    }
+    const root = path.resolve("tmp", `sample-symlink-store-${randomUUID()}`);
+    const store = new ProjectStore(root);
+    const provider = new SampleProvider(fixture, store);
+
+    await expect(provider.copyToProject()).rejects.toMatchObject({
+      code: "invalid_path",
+    });
+    expect(await entriesOrEmpty(path.join(root, "projects"))).toEqual([]);
+    expect(await entriesOrEmpty(path.join(root, "recovery"))).not.toEqual([]);
+  });
+
+  it("quarantines a partial sample transaction outside the live namespace", async () => {
+    const fixture = path.resolve("tmp", `sample-partial-${randomUUID()}`);
+    await fs.mkdir(path.join(fixture, "images"), { recursive: true });
+    await fs.copyFile(path.join(fixtureRoot, "project.json"), path.join(fixture, "project.json"));
+    await fs.copyFile(
+      path.join(fixtureRoot, "images", "panel-1.png"),
+      path.join(fixture, "images", "panel-1.png"),
+    );
+    const root = path.resolve("tmp", `sample-partial-store-${randomUUID()}`);
+    const store = new ProjectStore(root);
+    const provider = new SampleProvider(fixture, store);
+
+    await expect(provider.copyToProject()).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await entriesOrEmpty(path.join(root, "projects"))).toEqual([]);
+    expect(await entriesOrEmpty(path.join(root, "recovery"))).not.toEqual([]);
   });
 });

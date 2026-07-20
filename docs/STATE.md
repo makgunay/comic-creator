@@ -53,19 +53,23 @@ Begin Task 5 now that Task 4 passes deterministic verification.
   tuned panel measurements of 31,272 and 32,335 ms. The existing matched smoke
   therefore passes: hero 29,891 ms <= 60,000 ms and panel 32,335 ms <= 35,000
   ms. No new live request was made for this decision update.
-- Task 4 added schema-validated local project creation, loading, saving, safe
-  asset resolution, serialized atomic document replacement, one atomic rolling
-  backup, and recovery from a corrupt current document.
+- Task 4 adds schema-valid persistence, canonical asset keys, symlink-contained
+  paths, atomic replacement, one rolling backup, and corrupt-file recovery.
 - The injected server factory now exposes public config plus create, load,
-  update, and sample-copy routes with product-safe errors and no secret values.
+  update, and sample-copy routes. Strict create-input and body-parser failures
+  return non-retryable product-safe client errors with no secret values.
 - The tracked “Nova and the Moon Kite” sample contains four deterministic
   1024×1024 PNG panels and the four exact local dialogue overlays. The build
-  script validates source and normalized hashes, and repeat builds are stable.
-- Sample copy creates an independent writable project, normalizes all stored
-  asset keys to `images/<image-id>.png`, leaves tracked fixtures unchanged, and
+  script validates temporary dimensions and hashes before atomic replacement;
+  invalid temporary outputs move to recovery quarantine.
+- Sample copy accepts only regular contained fixture files, stages the complete
+  project outside the live namespace, atomically publishes it, and quarantines
+  failures without orphan assets. It leaves tracked fixtures unchanged and
   succeeds without an API key, network request, or generation-provider call.
-- Task 4 focused verification passes 21/21 tests. Full `npm run verify` passes
-  strict typechecking, 65/65 deterministic tests, and the production build.
+- Injected save, backup, sample-copy, and builder failures preserve known-good
+  data and leave no temporary residue in the live projects namespace.
+- Task 4 focused verification passes 48/48 tests. Full `npm run verify` passes
+  strict typechecking, 76/76 deterministic tests, and the production build.
   No paid or live OpenAI request was made for Task 4.
 
 ## Active decisions

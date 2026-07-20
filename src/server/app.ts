@@ -46,8 +46,14 @@ export function createApp(
     const code = error instanceof Error && "code" in error
       ? error.code
       : undefined;
+    const status = error instanceof Error && "status" in error
+      ? error.status
+      : undefined;
     const missing = code === "not_found";
-    const invalid = error instanceof ZodError || code === "invalid_path";
+    const invalid = error instanceof ZodError
+      || code === "invalid_path"
+      || status === 400
+      || status === 413;
     response
       .status(missing ? 404 : invalid ? 400 : 500)
       .set("cache-control", "no-store")

@@ -4,12 +4,8 @@ export const BeatTypeSchema = z.enum(["setup", "problem", "bigMoment", "ending"]
 export const StylePresetSchema = z.enum(["cartoon", "manga", "superhero"]);
 export const GenerationStatusSchema = z.enum(["idle", "generating", "failed-retryable"]);
 
-const isRelativeImageAssetKey = (localPath: string) => {
-  const segments = localPath.split("/");
-  return localPath.startsWith("images/")
-    && !localPath.includes("\\")
-    && segments.every((segment) => segment.length > 0 && segment !== "..");
-};
+const isRelativeImageAssetKey = (localPath: string) =>
+  /^images\/[a-zA-Z0-9][a-zA-Z0-9-]{0,127}\.png$/.test(localPath);
 
 export const TextOverlaySchema = z.object({
   id: z.string().min(1),
@@ -188,7 +184,15 @@ export type ImageVersion = z.infer<typeof ImageVersionSchema>;
 const beatTypes = BeatTypeSchema.options;
 const cartoonNotes = "Bold ink outlines, warm textured color, expressive faces, clear shapes.";
 
-export function createProject(input: { title: string; localAuthorCredit: string }): Project {
+export const CreateProjectInputSchema = z.strictObject({
+  title: z.string().min(1),
+  localAuthorCredit: z.string(),
+});
+
+export type CreateProjectInput = z.infer<typeof CreateProjectInputSchema>;
+
+export function createProject(input: unknown): Project {
+  const validInput = CreateProjectInputSchema.parse(input);
   const now = new Date().toISOString();
   const beats = beatTypes.map((type) => ({
     id: globalThis.crypto.randomUUID(),
@@ -216,8 +220,8 @@ export function createProject(input: { title: string; localAuthorCredit: string 
   return ProjectSchema.parse({
     id: globalThis.crypto.randomUUID(),
     schemaVersion: 1,
-    title: input.title,
-    localAuthorCredit: input.localAuthorCredit,
+    title: validInput.title,
+    localAuthorCredit: validInput.localAuthorCredit,
     createdAt: now,
     updatedAt: now,
     hero: { childDescription: "", imageVersions: [] },
