@@ -67,8 +67,8 @@ early feasibility gate.
   observed panel target after three of six Task 8 panel samples exceeded it.
 
 Functional acceptance passes: a judge can run the project and reproduce the
-sample demo. Checkpoint closure still requires clean setup proof, Task 8 review,
-and the D-007 decision; live latency acceptance is partial, not passed.
+sample demo. Checkpoint closure still requires Task 8 review and the D-007
+decision; live latency acceptance is partial, not passed.
 
 ### 4. Prepare and submit — pending
 

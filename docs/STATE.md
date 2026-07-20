@@ -21,7 +21,7 @@ revise D-007 before treating Checkpoint 3 as complete.
 - Deterministic proof: `npm run verify` covers the shared domain, storage,
   provider contracts/errors, server routes, client lifecycle behavior, the
   mocked full journey, pagination, and PDF rendering. The latest count belongs
-  in the Task 8 report and commit evidence: 30 files and 190 tests.
+  in the Task 8 report and commit evidence: 30 files and 192 tests.
 - Live OpenAI proof: `gpt-5.6-luna` plus `gpt-image-2` completed one approved
   hero, four approved panels, and one non-destructive redirection. Eight paid
   image requests total included the two-call smoke. Exact dialogue stayed local.
