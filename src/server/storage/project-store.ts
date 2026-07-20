@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import fsSync, { type Stats } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import sharp from "sharp";
 import { ZodError } from "zod";
 import {
   createProject,
@@ -83,7 +84,7 @@ function isWithin(parent: string, child: string): boolean {
 
 export class ProjectStore {
   private readonly root: string;
-  private readonly writes = new Map<string, Promise<void>>();
+  private readonly writes = new Map<string, Promise<unknown>>();
 
   constructor(
     root: string,
@@ -263,6 +264,35 @@ export class ProjectStore {
     return project;
   }
 
+  private async enqueue<T>(projectId: string, work: () => Promise<T>): Promise<T> {
+    const previousWrite = this.writes.get(projectId) ?? Promise.resolve();
+    const queued = previousWrite.catch(() => undefined).then(work);
+    this.writes.set(projectId, queued);
+    try {
+      return await queued;
+    } finally {
+      if (this.writes.get(projectId) === queued) {
+        this.writes.delete(projectId);
+      }
+    }
+  }
+
+  private async persist(project: Project): Promise<void> {
+    const directory = this.projectDir(project.id);
+    const staging = path.join(this.root, "staging");
+
+    await this.ensureDirectory(staging);
+    await this.assertSafePath(directory);
+    const liveDirectoryExisted = Boolean(
+      await this.lstatIfExists(directory),
+    );
+    if (liveDirectoryExisted) {
+      await this.saveExistingProject(project, directory, staging);
+    } else {
+      await this.saveNewProject(project, directory, staging);
+    }
+  }
+
   private async saveNewProject(
     project: Project,
     liveProject: string,
@@ -357,31 +387,23 @@ export class ProjectStore {
 
   async save(project: Project): Promise<void> {
     const valid = ProjectSchema.parse(project);
-    const previousWrite = this.writes.get(valid.id) ?? Promise.resolve();
-    const write = previousWrite.catch(() => undefined).then(async () => {
-      const directory = this.projectDir(valid.id);
-      const staging = path.join(this.root, "staging");
+    await this.enqueue(valid.id, () => this.persist(valid));
+  }
 
-      await this.ensureDirectory(staging);
-      await this.assertSafePath(directory);
-      const liveDirectoryExisted = Boolean(
-        await this.lstatIfExists(directory),
-      );
-      if (liveDirectoryExisted) {
-        await this.saveExistingProject(valid, directory, staging);
-      } else {
-        await this.saveNewProject(valid, directory, staging);
+  async mutate(
+    id: string,
+    mutator: (current: Project) => Project | Promise<Project>,
+  ): Promise<Project> {
+    validateSegment(id, "project id");
+    return this.enqueue(id, async () => {
+      const current = await this.load(id);
+      const next = ProjectSchema.parse(await mutator(structuredClone(current)));
+      if (next.id !== id) {
+        throw new StoragePathError("Project mutation changed its project id");
       }
+      await this.persist(next);
+      return next;
     });
-
-    this.writes.set(valid.id, write);
-    try {
-      await write;
-    } finally {
-      if (this.writes.get(valid.id) === write) {
-        this.writes.delete(valid.id);
-      }
-    }
   }
 
   async createWithAssets(
@@ -457,6 +479,80 @@ export class ProjectStore {
       }
     }
     throw new ProjectNotFoundError(`No valid project document for ${id}`);
+  }
+
+  async publishImageAsset(
+    projectId: string,
+    imageId: string,
+    bytes: Uint8Array,
+  ): Promise<void> {
+    const safeProjectId = validateSegment(projectId, "project id");
+    const safeImageId = validateSegment(imageId, "image id");
+    const stagingRoot = path.join(this.root, "staging");
+    const staged = path.join(
+      stagingRoot,
+      `image-${safeProjectId}-${safeImageId}-${randomUUID()}.png`,
+    );
+    const target = this.assetPath(safeProjectId, safeImageId);
+    try {
+      await this.ensureDirectory(stagingRoot);
+      await this.fileSystem.writeFile(staged, bytes);
+      await this.assertRegularContainedFile(stagingRoot, staged);
+      const metadata = await sharp(staged).metadata().catch(() => undefined);
+      if (
+        metadata?.format !== "png"
+        || !metadata.width
+        || !metadata.height
+        || metadata.width !== metadata.height
+      ) {
+        throw Object.assign(new Error("Generated artwork was not a square PNG"), {
+          code: "provider",
+        });
+      }
+      const images = path.dirname(target);
+      await this.assertSafePath(images);
+      const imagesStats = await this.fileSystem.lstat(images);
+      if (imagesStats.isSymbolicLink() || !imagesStats.isDirectory()) {
+        throw new StoragePathError("Project images path is not a real directory");
+      }
+      if (await this.lstatIfExists(target)) {
+        throw Object.assign(new Error("Image asset already exists"), {
+          code: "already_exists",
+        });
+      }
+      await this.fileSystem.rename(staged, target);
+    } catch (error) {
+      await this.failWithCleanup(
+        error,
+        [staged],
+        `image-${safeProjectId}`,
+      );
+    }
+  }
+
+  async quarantineImageAsset(projectId: string, imageId: string): Promise<void> {
+    const safeProjectId = validateSegment(projectId, "project id");
+    const safeImageId = validateSegment(imageId, "image id");
+    await this.quarantineExisting(
+      [this.assetPath(safeProjectId, safeImageId)],
+      `orphan-${safeProjectId}`,
+    );
+  }
+
+  async resolveImageAsset(projectId: string, imageId: string): Promise<string> {
+    const filename = this.assetPath(projectId, imageId);
+    const images = path.dirname(filename);
+    await this.assertRegularContainedFile(images, filename);
+    const metadata = await sharp(filename).metadata().catch(() => undefined);
+    if (
+      metadata?.format !== "png"
+      || !metadata.width
+      || !metadata.height
+      || metadata.width !== metadata.height
+    ) {
+      throw new StoragePathError("Image asset must be a square PNG");
+    }
+    return filename;
   }
 
   assetPath(projectId: string, imageId: string): string {

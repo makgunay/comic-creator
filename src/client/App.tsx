@@ -8,6 +8,7 @@ import {
 import { AppFrame, type WorkshopStep } from "./components/AppFrame";
 import { HeroWorkshop } from "./features/hero/HeroWorkshop";
 import { LaunchScreen } from "./features/launch/LaunchScreen";
+import { PanelWorkshop } from "./features/panels/PanelWorkshop";
 import { StorySpine } from "./features/story/StorySpine";
 import { StylePicker } from "./features/style/StylePicker";
 import { useProject } from "./state/use-project";
@@ -29,8 +30,9 @@ function ProjectWorkshop({
   api: ComicApi;
   configStatus: GenerationConfigStatus;
 }) {
-  const { project, saveState, update } = useProject(projectId, api);
+  const { project, saveState, update, acceptServerProject } = useProject(projectId, api);
   const [step, setStep] = useState<WorkshopStep>("hero");
+  const [activeDraw, setActiveDraw] = useState(false);
 
   if (!project) {
     return (
@@ -48,13 +50,18 @@ function ProjectWorkshop({
       currentStep={step}
       saveState={saveState}
       configStatus={configStatus}
+      interactionLocked={activeDraw}
       onStepChange={setStep}
     >
       {step === "hero" ? (
         <HeroWorkshop
           project={project}
           configStatus={configStatus}
+          saveState={saveState}
+          api={api}
           onChange={replaceProject}
+          acceptServerProject={acceptServerProject}
+          onBusyChange={setActiveDraw}
         />
       ) : null}
       {step === "style" ? (
@@ -64,11 +71,24 @@ function ProjectWorkshop({
         />
       ) : null}
       {step === "story" ? <StorySpine project={project} onChange={replaceProject} /> : null}
-      <div className="step-actions">
+      {step === "panels" ? (
+        <PanelWorkshop
+          project={project}
+          api={api}
+          saveState={saveState}
+          configStatus={configStatus}
+          onChange={replaceProject}
+          acceptServerProject={acceptServerProject}
+          onBackToStory={() => setStep("story")}
+          onBusyChange={setActiveDraw}
+        />
+      ) : null}
+      {step !== "panels" ? <div className="step-actions">
         {step !== "hero" ? (
           <button
             className="button button-secondary previous-button"
             type="button"
+            disabled={activeDraw}
             onClick={() => setStep(step === "story" ? "style" : "hero")}
           >
             <ArrowIcon direction="left" />
@@ -79,6 +99,7 @@ function ProjectWorkshop({
           <button
             className="button button-next button-next-blue"
             type="button"
+            disabled={activeDraw}
             onClick={() => setStep("style")}
           >
             Next: Choose a style
@@ -86,18 +107,18 @@ function ProjectWorkshop({
           </button>
         ) : null}
         {step === "style" ? (
-          <button className="button button-next" type="button" onClick={() => setStep("story")}>
+          <button className="button button-next" type="button" disabled={activeDraw} onClick={() => setStep("story")}>
             Next: Build your story
             <ArrowIcon />
           </button>
         ) : null}
         {step === "story" ? (
-          <button className="button button-next" type="button" disabled>
+          <button className="button button-next" type="button" disabled={activeDraw} onClick={() => setStep("panels")}>
             Next: Direct panels
             <ArrowIcon />
           </button>
         ) : null}
-      </div>
+      </div> : null}
     </AppFrame>
   );
 }

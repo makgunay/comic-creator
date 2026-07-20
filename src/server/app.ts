@@ -2,7 +2,10 @@ import path from "node:path";
 import express, { type Express } from "express";
 import { ZodError } from "zod";
 import { readConfig, type AppConfig } from "./config";
+import { GenerationService } from "./generation/generation-service";
+import { OpenAIGenerationProvider } from "./generation/openai-provider";
 import { createConfigRouter } from "./routes/config-routes";
+import { createGenerationRouter } from "./routes/generation-routes";
 import { createProjectRouter } from "./routes/project-routes";
 import { SampleProvider } from "./storage/sample-provider";
 import { ProjectStore } from "./storage/project-store";
@@ -11,11 +14,15 @@ export interface AppDependencies {
   config: AppConfig;
   store: ProjectStore;
   sampleProvider: SampleProvider;
+  generationService?: GenerationService;
 }
 
 function defaultDependencies(): AppDependencies {
   const config = readConfig();
   const store = new ProjectStore(path.resolve(config.DATA_DIR));
+  const generationService = config.OPENAI_API_KEY
+    ? new GenerationService(store, new OpenAIGenerationProvider(config))
+    : undefined;
   return {
     config,
     store,
@@ -23,6 +30,7 @@ function defaultDependencies(): AppDependencies {
       path.resolve("sample-assets/moon-kite"),
       store,
     ),
+    ...(generationService ? { generationService } : {}),
   };
 }
 
@@ -36,6 +44,10 @@ export function createApp(
   app.use(
     "/api",
     createProjectRouter(dependencies.store, dependencies.sampleProvider),
+  );
+  app.use(
+    "/api",
+    createGenerationRouter(dependencies.generationService, dependencies.store),
   );
   app.use((
     error: unknown,

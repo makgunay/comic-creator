@@ -9,7 +9,7 @@ Build Week MVP implementation is underway on
 
 ## Current focus
 
-Begin Task 6 now that Task 5 passes deterministic and visual verification.
+Begin Task 7 now that Task 6 passes deterministic and browser verification.
 
 ## Verified facts
 
@@ -45,27 +45,26 @@ Begin Task 6 now that Task 5 passes deterministic and visual verification.
   unchanged. Its four 1024×1024 PNGs and exact dialogue are validated.
 - Task 4 full verification passed strict typechecking, 78/78 deterministic tests,
   and the production build without a paid or live OpenAI request.
-- Task 5 implements child-facing launch, hero, style, and story. Launch exposes
-  exactly `Start a new comic` and `Explore the sample`; optional author credit
-  remains local project data.
-- The typed browser API validates responses, normalizes malformed/network errors,
-  and rejects schema-shaped messages that resemble credentials.
-- Autosave uses a 500 ms debounce, stable pagehide listener, confirmed-only
-  `Saved`, monotonic revisions and save attempts, and project-context guards;
-  stale same-revision completions cannot replace newer save outcomes.
-- Style presets seed baseline and editable notes; edits change only `editedNotes`
-  and Reset restores baseline. Story has exactly four child-authored beat cards
-  without imposing a four-panel domain cap.
-- Configuration has explicit loading, enabled, disabled, and error states with
-  request-identity and unmount guards. Launch requests have the same lifecycle
-  protection, including React Strict Mode effect replay.
-- Drawing remains disabled until Task 6 even with enabled configuration and a
-  completed description. Error notices are alerts; informational notices are
-  polite statuses; step navigation focuses the new screen heading.
-- Browser fallback QA verified four/two/one story columns at 1440, 900, and
-  390 px, visible desktop actions at 1440×900, and no 390×844 overflow.
-- Task 5 correction verification passes typecheck, 110/110 deterministic tests,
-  and production build without a live or paid OpenAI request.
+- Task 5 implements the verified child-facing launch, hero, style, and story
+  workflow with confirmed-only autosave and lifecycle-safe client requests.
+- Task 6 implements hero and panel generation behind strict server routes,
+  explicit candidate approval or dismissal, exact local dialogue/caption
+  overlays, and a responsive panel-directing workshop. Premiere remains disabled.
+- Project writes use queued atomic mutation. Generated PNGs are staged, checked
+  as contained regular square PNGs, atomically published, and quarantined on
+  later mutation failure; failures never replace approved artwork.
+- Generation completion merges into the latest project revision, preserving
+  concurrent authored edits, approved version IDs, version history, and overlays.
+- Hero replacement affects future generation only; existing panels remain
+  unchanged. Client responses are guarded by request, project, API, and mount
+  identity before they can change UI state.
+- The project image route validates project membership, declared local paths,
+  containment, regular files, and square PNG shape without requiring an API key.
+- Browser fallback QA inspected accepted hero/panel concepts and local desktop and
+  390x844 renders. The panel canvas is wide, desktop controls remain visible,
+  mobile has no horizontal overflow, and interactive targets are at least 44 px.
+- Task 6 verification passes typecheck, 148/148 deterministic tests, production
+  build, and diff check without a live or paid OpenAI request.
 
 ## Active decisions
 
@@ -83,15 +82,13 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Blockers and unknowns
 
-- No Task 5 blocker remains. Live generation latency is observed, not
-  guaranteed, and should remain visible during later manual QA.
+- No Task 6 blocker remains. Live generation was intentionally not exercised;
+  the honest wait state and provider behavior still need end-to-end release QA.
 
 ## Next actions
 
-1. Implement and review Task 6: panel generation, exact overlays, and explicit
-   image-version approval.
-2. Preserve the honest drawing wait state and never replace approved artwork
-   automatically.
+1. Implement and review Task 7: pagination, print preview, and PDF export.
+2. Preserve approved-image history and exact local overlays through export.
 
 ## Resume cue
 

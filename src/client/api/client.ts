@@ -33,8 +33,24 @@ const ApiErrorResponseSchema = z.strictObject({
   }),
 });
 
+const ProjectResponseSchema = z.strictObject({
+  project: ProjectSchema,
+});
+
+const HeroApprovalResponseSchema = z.strictObject({
+  project: ProjectSchema,
+  heroReferenceChanged: z.boolean(),
+});
+
+const PanelGenerationInputSchema = z.strictObject({
+  revisionDirection: z.string().max(500),
+});
+
 export type PublicConfig = z.infer<typeof ConfigResponseSchema>;
 export type GenerationConfigStatus = "loading" | "enabled" | "disabled" | "error";
+export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
+export type HeroApprovalResponse = z.infer<typeof HeroApprovalResponseSchema>;
+export type PanelGenerationInput = z.infer<typeof PanelGenerationInputSchema>;
 
 export interface RequestOptions {
   signal?: AbortSignal;
@@ -47,6 +63,13 @@ export interface ComicApi {
   copySample(options?: RequestOptions): Promise<Project>;
   loadProject(id: string, options?: RequestOptions): Promise<Project>;
   saveProject(project: Project, options?: RequestOptions): Promise<Project>;
+  generateHero(projectId: string, options?: RequestOptions): Promise<ProjectResponse>;
+  approveHero(projectId: string, imageId: string, options?: RequestOptions): Promise<HeroApprovalResponse>;
+  rejectHeroCandidate(projectId: string, imageId: string, options?: RequestOptions): Promise<ProjectResponse>;
+  generatePanel(projectId: string, panelId: string, input: PanelGenerationInput, options?: RequestOptions): Promise<ProjectResponse>;
+  approvePanelVersion(projectId: string, panelId: string, versionId: string, options?: RequestOptions): Promise<ProjectResponse>;
+  rejectPanelCandidate(projectId: string, panelId: string, versionId: string, options?: RequestOptions): Promise<ProjectResponse>;
+  imageUrl(projectId: string, imageId: string): string;
 }
 
 const unreadableResponse: ApiErrorPayload["error"] = {
@@ -187,6 +210,85 @@ export class ComicApiClient implements ComicApi {
       requestInit("PUT", options, validProject),
       ProjectSchema.parse,
     );
+  }
+
+  generateHero(
+    projectId: string,
+    options: RequestOptions = {},
+  ): Promise<ProjectResponse> {
+    return this.request(
+      `/projects/${encodeURIComponent(projectId)}/hero/generate`,
+      requestInit("POST", options, {}),
+      ProjectResponseSchema.parse,
+    );
+  }
+
+  approveHero(
+    projectId: string,
+    imageId: string,
+    options: RequestOptions = {},
+  ): Promise<HeroApprovalResponse> {
+    return this.request(
+      `/projects/${encodeURIComponent(projectId)}/hero/${encodeURIComponent(imageId)}/approve`,
+      requestInit("POST", options, {}),
+      HeroApprovalResponseSchema.parse,
+    );
+  }
+
+  rejectHeroCandidate(
+    projectId: string,
+    imageId: string,
+    options: RequestOptions = {},
+  ): Promise<ProjectResponse> {
+    return this.request(
+      `/projects/${encodeURIComponent(projectId)}/hero/${encodeURIComponent(imageId)}/reject`,
+      requestInit("POST", options, {}),
+      ProjectResponseSchema.parse,
+    );
+  }
+
+  generatePanel(
+    projectId: string,
+    panelId: string,
+    input: PanelGenerationInput,
+    options: RequestOptions = {},
+  ): Promise<ProjectResponse> {
+    const validInput = PanelGenerationInputSchema.parse(input);
+    return this.request(
+      `/projects/${encodeURIComponent(projectId)}/panels/${encodeURIComponent(panelId)}/generate`,
+      requestInit("POST", options, validInput),
+      ProjectResponseSchema.parse,
+    );
+  }
+
+  approvePanelVersion(
+    projectId: string,
+    panelId: string,
+    versionId: string,
+    options: RequestOptions = {},
+  ): Promise<ProjectResponse> {
+    return this.request(
+      `/projects/${encodeURIComponent(projectId)}/panels/${encodeURIComponent(panelId)}/versions/${encodeURIComponent(versionId)}/approve`,
+      requestInit("POST", options, {}),
+      ProjectResponseSchema.parse,
+    );
+  }
+
+  rejectPanelCandidate(
+    projectId: string,
+    panelId: string,
+    versionId: string,
+    options: RequestOptions = {},
+  ): Promise<ProjectResponse> {
+    return this.request(
+      `/projects/${encodeURIComponent(projectId)}/panels/${encodeURIComponent(panelId)}/versions/${encodeURIComponent(versionId)}/reject`,
+      requestInit("POST", options, {}),
+      ProjectResponseSchema.parse,
+    );
+  }
+
+  imageUrl(projectId: string, imageId: string): string {
+    return `${this.baseUrl}/projects/${encodeURIComponent(projectId)}/images/${encodeURIComponent(imageId)}`;
   }
 }
 

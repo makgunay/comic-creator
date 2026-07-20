@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Project } from "../../src/domain/project";
 import type { ComicApi } from "../../src/client/api/client";
 import { useProject } from "../../src/client/state/use-project";
+import { makeClientApi } from "../fixtures/client-api-fixtures";
 import { makeProject } from "../fixtures/project-fixtures";
 
 interface Deferred<T> {
@@ -23,23 +24,41 @@ function deferred<T>(): Deferred<T> {
 
 function makeApi(project: Project, overrides: Partial<ComicApi> = {}): ComicApi {
   return {
-    config: vi.fn().mockResolvedValue({ generationEnabled: false }),
-    createProject: vi.fn().mockResolvedValue(project),
-    copySample: vi.fn().mockResolvedValue(project),
-    loadProject: vi.fn().mockResolvedValue(project),
-    saveProject: vi.fn().mockResolvedValue(project),
+    ...makeClientApi(project),
     ...overrides,
   };
 }
 
 function Harness({ projectId, api }: { projectId: string; api: ComicApi }) {
-  const { project, saveState, update } = useProject(projectId, api);
+  const { project, saveState, update, acceptServerProject } = useProject(projectId, api);
   return (
     <div>
       <output aria-label="Project title">{project?.title ?? "none"}</output>
       <output aria-label="Save state">{saveState}</output>
       <button onClick={() => update((current) => ({ ...current, title: "First edit" }))}>First edit</button>
       <button onClick={() => update((current) => ({ ...current, title: "Latest edit" }))}>Latest edit</button>
+      <button onClick={() => project && acceptServerProject({ ...project, title: "Server project" })}>
+        Accept server project
+      </button>
+    </div>
+  );
+}
+
+function AcceptanceHarness({
+  projectId,
+  api,
+  expose,
+}: {
+  projectId: string;
+  api: ComicApi;
+  expose: (accept: (project: Project) => boolean) => void;
+}) {
+  const { project, saveState, acceptServerProject } = useProject(projectId, api);
+  expose(acceptServerProject);
+  return (
+    <div>
+      <output aria-label="Project title">{project?.title ?? "none"}</output>
+      <output aria-label="Save state">{saveState}</output>
     </div>
   );
 }
@@ -211,5 +230,68 @@ describe("useProject", () => {
     await act(async () => vi.advanceTimersByTime(500));
 
     expect(saveProject).not.toHaveBeenCalled();
+  });
+
+  it("accepts a server-confirmed project without autosaving it and cancels pending timers", async () => {
+    const project = makeProject();
+    const saveProject = vi.fn().mockResolvedValue(project);
+    render(<Harness projectId={project.id} api={makeApi(project, { saveProject })} />);
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "First edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Accept server project" }));
+    expect(screen.getByLabelText("Project title")).toHaveTextContent("Server project");
+    expect(screen.getByLabelText("Save state")).toHaveTextContent("saved");
+    await act(async () => vi.advanceTimersByTime(500));
+
+    expect(saveProject).not.toHaveBeenCalled();
+  });
+
+  it("supersedes an in-flight autosave when accepting a server-confirmed project", async () => {
+    const project = makeProject();
+    const oldSave = deferred<Project>();
+    const saveProject = vi.fn().mockReturnValue(oldSave.promise);
+    render(<Harness projectId={project.id} api={makeApi(project, { saveProject })} />);
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "First edit" }));
+    await act(async () => vi.advanceTimersByTime(500));
+
+    fireEvent.click(screen.getByRole("button", { name: "Accept server project" }));
+    await act(async () => oldSave.resolve({ ...project, title: "Stale save response" }));
+
+    expect(screen.getByLabelText("Project title")).toHaveTextContent("Server project");
+    expect(screen.getByLabelText("Save state")).toHaveTextContent("saved");
+  });
+
+  it("rejects a server project from an obsolete project context", async () => {
+    const projectA = { ...makeProject(), id: "project-a", title: "Project A" };
+    const projectB = { ...makeProject(), id: "project-b", title: "Project B" };
+    const api = makeApi(projectA, {
+      loadProject: vi.fn(async (id) => id === projectA.id ? projectA : projectB),
+    });
+    let oldAccept: ((project: Project) => boolean) | undefined;
+    let latestAccept: ((project: Project) => boolean) | undefined;
+    const view = render(
+      <AcceptanceHarness
+        projectId={projectA.id}
+        api={api}
+        expose={(accept) => { oldAccept ??= accept; latestAccept = accept; }}
+      />,
+    );
+    await act(async () => {});
+    view.rerender(
+      <AcceptanceHarness
+        projectId={projectB.id}
+        api={api}
+        expose={(accept) => { latestAccept = accept; }}
+      />,
+    );
+    await act(async () => {});
+
+    expect(oldAccept?.({ ...projectA, title: "Stale server project" })).toBe(false);
+    await act(async () => {
+      expect(latestAccept?.({ ...projectB, title: "Current server project" })).toBe(true);
+    });
+    expect(screen.getByLabelText("Project title")).toHaveTextContent("Current server project");
   });
 });

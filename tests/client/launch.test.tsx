@@ -4,16 +4,13 @@ import { StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ComicApiError, type ComicApi } from "../../src/client/api/client";
 import { LaunchScreen } from "../../src/client/features/launch/LaunchScreen";
+import { makeClientApi } from "../fixtures/client-api-fixtures";
 import { makeProject } from "../fixtures/project-fixtures";
 
 function makeApi(overrides: Partial<ComicApi> = {}): ComicApi {
   const project = makeProject();
   return {
-    config: vi.fn().mockResolvedValue({ generationEnabled: false }),
-    createProject: vi.fn().mockResolvedValue(project),
-    copySample: vi.fn().mockResolvedValue(project),
-    loadProject: vi.fn().mockResolvedValue(project),
-    saveProject: vi.fn().mockResolvedValue(project),
+    ...makeClientApi(project),
     ...overrides,
   };
 }

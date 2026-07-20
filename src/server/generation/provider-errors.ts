@@ -89,6 +89,24 @@ export function toApiError(error: unknown): ApiErrorPayload {
       },
     };
   }
+  if (hasCode(error, "invalid_input") || hasCode(error, "invalid_path")) {
+    return {
+      error: {
+        code: "storage",
+        message: "That saved item cannot be changed in that way.",
+        retryable: false,
+      },
+    };
+  }
+  if (hasCode(error, "provider")) {
+    return {
+      error: {
+        code: "provider",
+        message: "The illustrator could not finish this version.",
+        retryable: true,
+      },
+    };
+  }
   return {
     error: {
       code: "provider",

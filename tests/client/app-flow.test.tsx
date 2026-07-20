@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../../src/client/App";
 import type { ComicApi } from "../../src/client/api/client";
+import { makeClientApi } from "../fixtures/client-api-fixtures";
 import { makeProject } from "../fixtures/project-fixtures";
 
 interface Deferred<T> {
@@ -24,11 +25,7 @@ function deferred<T>(): Deferred<T> {
 function makeApi(overrides: Partial<ComicApi> = {}): ComicApi {
   const project = makeProject();
   return {
-    config: vi.fn().mockResolvedValue({ generationEnabled: false }),
-    createProject: vi.fn().mockResolvedValue(project),
-    copySample: vi.fn().mockResolvedValue(project),
-    loadProject: vi.fn().mockResolvedValue(project),
-    saveProject: vi.fn().mockImplementation(async (next) => next),
+    ...makeClientApi(project),
     ...overrides,
   };
 }
@@ -62,6 +59,18 @@ describe("App child flow", () => {
 
     expect(await screen.findByRole("heading", { name: "Create your hero" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Story" })).toBeEnabled();
+  });
+
+  it("enables Panels while keeping Premiere truthfully unavailable", async () => {
+    const user = userEvent.setup();
+    render(<App api={makeApi()} />);
+    await user.click(screen.getByRole("button", { name: "Explore the sample" }));
+    await screen.findByRole("heading", { name: "Create your hero" });
+
+    expect(screen.getByRole("button", { name: "Panels" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Premiere" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Panels" }));
+    expect(screen.getByRole("heading", { name: "Direct panel 1" })).toBeInTheDocument();
   });
 
   it("does not announce Sample mode while configuration is loading", () => {

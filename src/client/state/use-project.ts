@@ -18,7 +18,8 @@ type Action =
   | { type: "update"; mutator: (current: Project) => Project }
   | { type: "save-start"; revision: number; attempt: number }
   | { type: "save-success"; revision: number; attempt: number; project: Project }
-  | { type: "save-error"; revision: number; attempt: number };
+  | { type: "save-error"; revision: number; attempt: number }
+  | { type: "server-accept"; project: Project; attempt: number };
 
 const initialState: State = {
   saveState: "loading",
@@ -59,6 +60,13 @@ function reducer(state: State, action: Action): State {
       return action.revision === state.editRevision && action.attempt === state.latestSaveAttempt
         ? { ...state, saveState: "error" }
         : state;
+    case "server-accept":
+      return {
+        project: action.project,
+        saveState: "saved",
+        editRevision: state.editRevision + 1,
+        latestSaveAttempt: action.attempt,
+      };
   }
 }
 
@@ -71,6 +79,8 @@ export function useProject(projectId: string, api: ComicApi = comicApi) {
   const latestProject = useRef<Project | undefined>(state.project);
   const latestSaveState = useRef<SaveState>(state.saveState);
   const latestEditRevision = useRef(state.editRevision);
+  const activeProjectId = useRef(projectId);
+  activeProjectId.current = projectId;
   latestProject.current = state.project;
   latestSaveState.current = state.saveState;
   latestEditRevision.current = state.editRevision;
@@ -168,5 +178,31 @@ export function useProject(projectId: string, api: ComicApi = comicApi) {
     dispatch({ type: "update", mutator });
   }, []);
 
-  return { project: state.project, saveState: state.saveState, update };
+  const renderContext = context.current;
+  const acceptServerProject = (
+    project: Project,
+    expectedContext = renderContext,
+  ): boolean => {
+    if (
+      expectedContext !== context.current
+      || activeProjectId.current !== projectId
+      || project.id !== projectId
+      || latestProject.current?.id !== projectId
+    ) {
+      return false;
+    }
+    clearTimer();
+    const attempt = saveAttempt.current + 1;
+    saveAttempt.current = attempt;
+    dispatch({ type: "server-accept", project, attempt });
+    return true;
+  };
+
+  return {
+    project: state.project,
+    saveState: state.saveState,
+    update,
+    acceptServerProject,
+    projectContext: renderContext,
+  };
 }

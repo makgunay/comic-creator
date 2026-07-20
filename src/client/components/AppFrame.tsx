@@ -34,6 +34,7 @@ export function AppFrame({
   currentStep,
   saveState,
   configStatus,
+  interactionLocked = false,
   onStepChange,
   children,
 }: {
@@ -41,6 +42,7 @@ export function AppFrame({
   currentStep: WorkshopStep;
   saveState: SaveState;
   configStatus: GenerationConfigStatus;
+  interactionLocked?: boolean;
   onStepChange: (step: WorkshopStep) => void;
   children: ReactNode;
 }) {
@@ -60,7 +62,7 @@ export function AppFrame({
         </div>
         <nav className="step-nav" aria-label="Comic workshop steps">
           {steps.map((step, index) => {
-            const available = index <= 2;
+            const available = index <= 3;
             return (
               <button
                 className="step-button"
@@ -68,8 +70,8 @@ export function AppFrame({
                 key={step.id}
                 aria-label={step.label}
                 aria-current={step.id === currentStep ? "step" : undefined}
-                aria-disabled={!available}
-                disabled={!available}
+                aria-disabled={!available || interactionLocked}
+                disabled={!available || interactionLocked}
                 onClick={() => onStepChange(step.id)}
               >
                 <span className="step-number">{index + 1}</span>
