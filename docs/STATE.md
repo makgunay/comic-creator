@@ -1,44 +1,53 @@
 # Project State
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Current stage
 
-The Build Week solo MVP implementation is complete on
-`feature/comic-creator-mvp`. Deterministic and functional proof passes, but the
-live latency acceptance gate is not passed.
+The Build Week solo MVP and final deterministic corrections are complete on
+`feature/comic-creator-mvp`. Functional proof passes, but the live latency
+acceptance gate is not passed.
 
 ## Current focus
 
-Finish Task 8 verification and review, then ask the user whether to retain or
-revise D-007 before treating Checkpoint 3 as complete.
+Ask the user whether to retain or revise D-007 before treating Checkpoint 3 as
+complete.
 
 ## Verified facts
 
 - Implemented: local React/Express app, filesystem persistence, sample mode,
   exact overlays, constrained OpenAI generation, explicit version approval,
-  opaque-URL project resume, four-per-page Premiere, and PDF export.
+  opaque-URL project resume, up to 16 panels, four-per-page Premiere, and PDF
+  export.
 - Deterministic proof: `npm run verify` covers the shared domain, storage,
   provider contracts/errors, server routes, client lifecycle behavior, the
-  mocked full journey, pagination, and PDF rendering. The latest count belongs
-  in the Task 8 report and commit evidence: 30 files and 192 tests.
+  mocked full journey, multi-page pagination, and PDF rendering. The final
+  correction count is 34 files and 223 tests.
+- Local boundary proof rejects hostile Host/Origin and cross-site browser
+  requests before API routes, requires JSON for writes, preserves safe `413`
+  responses, and keeps route identifiers and image membership contained.
+- Startup recovery converts persisted interrupted drawing work to
+  `failed-retryable` before listening and leaves already recovered projects
+  byte-for-byte untouched on another recovery pass.
 - Live OpenAI proof: `gpt-5.6-luna` plus `gpt-image-2` completed one approved
   hero, four approved panels, and one non-destructive redirection. Eight paid
   image requests total included the two-call smoke. Exact dialogue stayed local.
 - D-007 remains the accepted 35-second observed panel target. Current variance
   is material: three Task 8 panel image calls exceeded it, while three completed
   under it. No retry was made to improve the numbers.
-- Manual browser proof: Browser/IAB exposed no available browser, so system
-  Chrome fallback checked desktop, tablet, mobile, keyboard traversal, visible
-  focus, labels, target size, reduced motion, effective 200% reflow, sample
-  persistence, safe export failure, and zero normal-path console errors.
+- Earlier manual browser proof covered desktop, tablet, mobile, keyboard
+  traversal, visible focus, labels, target size, reduced motion, effective 200%
+  reflow, sample persistence, safe export failure, and zero normal-path console
+  errors. Final add-panel revalidation is recorded separately in the final
+  correction report.
 - Manual PDF proof: live and no-key PDFs rendered as clean, unencrypted,
   one-page US Letter documents with exact extracted overlays and no clipping,
   overlap, distortion, or broken glyph.
 - Clean tracked-files setup passed on Node 26: production-only install loaded
-  Sharp, then `npm ci && npm run verify` passed from the staged tracked files.
-- Final Task 8 review and the D-007 acceptance decision are the remaining
-  Checkpoint 3 actions.
+  Sharp and the pinned TypeScript launcher; the production server recovered an
+  interrupted project before listening. A separate clean checkout passed
+  `npm ci && npm run verify`.
+- Only the D-007 acceptance decision remains for Checkpoint 3.
 - The Devpost project remains a draft; `makgunay/comic-creator` is private and
   has no open-source license. The category is `Education`; the deadline is
   2026-07-21 at 5:00 PM Pacific Time.
@@ -67,10 +76,9 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Next actions
 
-1. Complete Task 8 task-scoped review.
-2. Ask the user to retain or revise D-007 based on the live variance.
-3. Record the public demo and capture the primary `/feedback` session ID.
-4. Grant required private-repository access and finish the Devpost submission.
+1. Ask the user to retain or revise D-007 based on the live variance.
+2. Record the public demo and capture the primary `/feedback` session ID.
+3. Grant required private-repository access and finish the Devpost submission.
 
 ## Resume cue
 

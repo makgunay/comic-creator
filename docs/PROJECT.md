@@ -8,8 +8,9 @@ Comic Creator
 
 ## Stage
 
-Build Week MVP design and written specification approved; checkpointed
-implementation plan ready for execution choice.
+Build Week solo MVP implemented and deterministically verified. The accepted
+live-latency target in D-007 remains unresolved because observed image
+generation times varied across that threshold.
 
 ## Product definition
 
@@ -45,7 +46,8 @@ overlays.
 2. Choose cartoon, manga, or superhero style and refine its plain-language
    style notes.
 3. Write Setup, Problem, Big Moment, and Ending.
-4. Direct at least one panel for each beat.
+4. Direct at least one panel for each beat and add more panels as needed, up to
+   the local-project limit of 16.
 5. Approve or redirect candidate artwork without destructive replacement.
 6. View panels four per page and export a printable PDF.
 

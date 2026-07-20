@@ -25,10 +25,12 @@ and are excluded from model prompts.
 - Describe and explicitly approve an original hero.
 - Start from cartoon, manga, or superhero style notes, then edit them.
 - Write Setup, Problem, Big Moment, and Ending.
-- Direct four or more ordered panels with exact dialogue and captions.
+- Direct four or more ordered panels with exact dialogue and captions; add
+  panels to any story beat up to the 16-panel local-project limit.
 - Generate, redirect, approve, or dismiss artwork without silently replacing
   the current approved version.
-- Restore the project from local filesystem storage after a server restart.
+- Restore the project from local filesystem storage after a server restart;
+  interrupted drawing attempts reopen as safe retryable failures.
 - Preview four panels per page; additional panels create additional pages.
 - Export approved artwork and exact overlays to a printable US Letter PDF.
 - Explore and edit a bundled four-panel sample without an API key or paid call.
@@ -62,7 +64,7 @@ Live illustration is deliberately server-only:
 ## Run locally
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -77,6 +79,18 @@ changing local environment configuration.
 
 The app writes an opaque `project` ID into the local URL. Keep that URL to
 reopen the saved comic after refreshing or restarting the local app.
+
+To exercise the production server locally:
+
+```bash
+npm ci
+npm run build
+npm start
+```
+
+Then open [http://127.0.0.1:4173](http://127.0.0.1:4173). The production
+runtime keeps its TypeScript launcher as a pinned runtime dependency, so this
+path continues to work after development-only packages are omitted.
 
 ## Sample mode
 
@@ -144,6 +158,9 @@ These choices were not delegated to a model. Durable rationale is recorded in
 
 - Credentials remain on the local server and are never returned by the public
   API.
+- API requests must target a loopback host. Browser requests from non-loopback,
+  null, malformed, or cross-site origins are rejected, and write requests must
+  use JSON.
 - Filesystem paths and image membership are validated before images or PDFs are
   served.
 - Moderation fails closed; provider errors become short product-safe messages.
