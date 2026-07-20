@@ -1213,8 +1213,7 @@ svg {
   .version-grid,
   .version-actions,
   .version-card,
-  .panel-field-grid,
-  .panel-navigation {
+  .panel-field-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1242,17 +1241,26 @@ svg {
   }
 
   .panel-navigation {
-    position: sticky;
-    z-index: 10;
-    bottom: 8px;
-    gap: 10px;
+    position: static;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+    padding: 8px;
     box-shadow: 4px 4px 0 var(--ink);
   }
 
   .panel-navigation .button,
   .panel-navigation .button:last-child {
     width: 100%;
+    min-width: 0;
     justify-self: stretch;
+    padding: 8px 6px;
+    font-size: .72rem;
+    white-space: normal;
+  }
+
+  .panel-navigation > strong {
+    font-size: .78rem;
+    line-height: 1.05;
   }
 
   .style-choice-grid,

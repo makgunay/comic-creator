@@ -10,10 +10,16 @@ import { makeClientApi } from "../fixtures/client-api-fixtures";
 import { deferred, makeProjectWithApprovedPanel } from "../fixtures/generation-fixtures";
 import { makeEightPanelProject, makeImageVersion, makePanel } from "../fixtures/project-fixtures";
 
-function WorkshopHarness({ project: initial, api, saveState = "saved" as const }: {
+function WorkshopHarness({
+  project: initial,
+  api,
+  saveState = "saved" as const,
+  configStatus = "enabled" as const,
+}: {
   project: Project;
   api: ComicApi;
   saveState?: "loading" | "dirty" | "saving" | "saved" | "error";
+  configStatus?: "loading" | "enabled" | "disabled" | "error";
 }) {
   const [project, setProject] = useState(initial);
   return (
@@ -21,7 +27,7 @@ function WorkshopHarness({ project: initial, api, saveState = "saved" as const }
       project={project}
       api={api}
       saveState={saveState}
-      configStatus="enabled"
+      configStatus={configStatus}
       onChange={setProject}
       acceptServerProject={(next) => { setProject(next); return next.id === project.id; }}
     />
@@ -74,18 +80,39 @@ describe("PanelWorkshop", () => {
     await user.click(screen.getByRole("button", { name: "Add caption" }));
 
     const panel = screen.getByLabelText("Panel 1 preview");
-    expect(within(panel).getByLabelText("Dialogue")).toHaveValue("");
-    expect(within(panel).getByLabelText("Caption")).toHaveValue("");
-    expect(within(panel).getByLabelText("Dialogue").closest("label")).toHaveStyle({
+    expect(within(panel).getByLabelText("Dialogue 1")).toHaveValue("");
+    expect(within(panel).getByLabelText("Caption 1")).toHaveValue("");
+    expect(within(panel).getByLabelText("Dialogue 1").closest("label")).toHaveStyle({
       left: "6%",
       top: "6%",
       width: "48%",
     });
-    expect(within(panel).getByLabelText("Caption").closest("label")).toHaveStyle({
+    expect(within(panel).getByLabelText("Caption 1").closest("label")).toHaveStyle({
       left: "8%",
       top: "76%",
       width: "84%",
     });
+  });
+
+  it("gives repeated overlays distinguishable labels and non-overlapping deterministic geometry", async () => {
+    const project = makeProjectWithApprovedPanel();
+    const user = userEvent.setup();
+    render(<WorkshopHarness project={project} api={makeClientApi(project)} />);
+
+    await user.click(screen.getByRole("button", { name: "Add dialogue" }));
+    await user.click(screen.getByRole("button", { name: "Add dialogue" }));
+    await user.click(screen.getByRole("button", { name: "Add caption" }));
+    await user.click(screen.getByRole("button", { name: "Add caption" }));
+
+    const preview = screen.getByLabelText("Panel 1 preview");
+    const dialogue1 = within(preview).getByLabelText("Dialogue 1").closest("label")!;
+    const dialogue2 = within(preview).getByLabelText("Dialogue 2").closest("label")!;
+    const caption1 = within(preview).getByLabelText("Caption 1").closest("label")!;
+    const caption2 = within(preview).getByLabelText("Caption 2").closest("label")!;
+    expect(dialogue1).toHaveStyle({ left: "4%", top: "6%", width: "44%" });
+    expect(dialogue2).toHaveStyle({ left: "52%", top: "6%", width: "44%" });
+    expect(caption1).toHaveStyle({ top: "64%", minHeight: "15%" });
+    expect(caption2).toHaveStyle({ top: "81%", minHeight: "15%" });
   });
 
   it("offers exactly the required quick chips and sends chips or custom direction", async () => {
@@ -123,9 +150,70 @@ describe("PanelWorkshop", () => {
     view.rerender(<WorkshopHarness project={project} api={api} saveState="saved" />);
     fireEvent.click(screen.getByRole("button", { name: "Re-draw panel" }));
     expect(screen.getByText(/around half a minute/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Re-draw panel" })).toHaveAccessibleDescription(
+      /drawing your panel now.*editing and navigation stay locked/i,
+    );
     expect(screen.getByLabelText("What happens?")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Add dialogue" })).toBeDisabled();
     await act(async () => pending.resolve({ project }));
+  });
+
+  it("explains configuration and unsaved-state drawing gates visibly", () => {
+    const project = makeProjectWithApprovedPanel();
+    const api = makeClientApi(project);
+    const view = render(
+      <WorkshopHarness project={project} api={api} configStatus="loading" />,
+    );
+    const draw = () => screen.getByRole("button", { name: "Re-draw panel" });
+
+    expect(draw()).toHaveAccessibleDescription(/checking the art studio/i);
+    expect(screen.getByText(/checking the art studio/i)).toBeVisible();
+
+    view.rerender(
+      <WorkshopHarness project={project} api={api} configStatus="disabled" />,
+    );
+    expect(draw()).toHaveAccessibleDescription(/sample mode/i);
+
+    view.rerender(
+      <WorkshopHarness project={project} api={api} configStatus="error" />,
+    );
+    expect(draw()).toHaveAccessibleDescription(/could not be checked/i);
+
+    view.rerender(
+      <WorkshopHarness project={project} api={api} saveState="dirty" />,
+    );
+    expect(draw()).toHaveAccessibleDescription(/changes are still saving/i);
+  });
+
+  it("explains every authored prerequisite and the ready state", () => {
+    const base = makeProjectWithApprovedPanel();
+    const api = makeClientApi(base);
+    const missingHero = structuredClone(base);
+    delete missingHero.hero.approvedReferenceImageId;
+    missingHero.hero.imageVersions = missingHero.hero.imageVersions.map((version) => ({
+      ...version,
+      status: "candidate" as const,
+    }));
+    const view = render(<WorkshopHarness key="missing-hero" project={missingHero} api={api} />);
+    const draw = () => screen.getByRole("button", { name: /draw panel/i });
+
+    expect(draw()).toHaveAccessibleDescription(
+      /approve a hero first.*go to hero.*use that version/i,
+    );
+
+    const missingAction = structuredClone(base);
+    missingAction.panels[0]!.action = "";
+    view.rerender(<WorkshopHarness key="missing-action" project={missingAction} api={api} />);
+    expect(draw()).toHaveAccessibleDescription(/describe what happens/i);
+
+    const missingSetting = structuredClone(base);
+    missingSetting.panels[0]!.setting = "";
+    view.rerender(<WorkshopHarness key="missing-setting" project={missingSetting} api={api} />);
+    expect(draw()).toHaveAccessibleDescription(/describe where they are/i);
+
+    view.rerender(<WorkshopHarness key="ready" project={base} api={api} />);
+    expect(draw()).toBeEnabled();
+    expect(draw()).toHaveAccessibleDescription(/ready to re-draw/i);
   });
 
   it("shows approved and newest candidate with explicit keep/use choices", async () => {
@@ -178,6 +266,42 @@ describe("PanelWorkshop", () => {
     render(<WorkshopHarness project={project} api={makeClientApi(project)} />);
     expect(screen.getByText("Newest candidate")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Use this version" })).toBeEnabled();
+  });
+
+  it("does not resurface resolved candidates after an approval response", () => {
+    const project = makeProjectWithApprovedPanel();
+    project.panels[0]!.approvedImageVersionId = "panel-candidate";
+    project.panels[0]!.imageVersions = project.panels[0]!.imageVersions.map((version) => ({
+      ...version,
+      status: version.id === "panel-candidate" ? "approved" as const : "rejected" as const,
+    }));
+    render(<WorkshopHarness project={project} api={makeClientApi(project)} />);
+
+    expect(screen.getByText("Current (approved)")).toBeInTheDocument();
+    expect(screen.queryByText("Newest candidate")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Use this version" })).not.toBeInTheDocument();
+  });
+
+  it("clears quick direction, custom direction, and notices when changing panels", async () => {
+    const project = makeProjectWithApprovedPanel();
+    const api = makeClientApi(project, {
+      generatePanel: vi.fn().mockResolvedValue({ project }),
+    });
+    const user = userEvent.setup();
+    render(<WorkshopHarness project={project} api={api} />);
+
+    await user.click(screen.getByRole("button", { name: "Re-draw panel" }));
+    expect(await screen.findByText(/newest candidate is ready/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Night" }));
+    await user.type(
+      screen.getByLabelText("Tell your illustrator what to change"),
+      "Move the kite higher",
+    );
+    await user.click(screen.getByRole("button", { name: "Next: Panel 2" }));
+
+    expect(screen.getByLabelText("Tell your illustrator what to change")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Night" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByText(/newest candidate is ready/i)).not.toBeInTheDocument();
   });
 
   it("truthfully labels candidate dismissal when there is no approved current panel", () => {

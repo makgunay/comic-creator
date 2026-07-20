@@ -34,6 +34,101 @@ function safeFailureMessage(error: unknown): string {
     : "The illustrator could not finish this version. Your current panel and words are safe. Try again.";
 }
 
+function rounded(value: number): number {
+  return Number(value.toFixed(4));
+}
+
+function layoutRepeatedOverlays(
+  overlays: readonly TextOverlay[],
+  kind: "dialogue" | "caption",
+): TextOverlay[] {
+  const matching = overlays.filter((overlay) => overlay.kind === kind);
+  if (matching.length <= 1) return [...overlays];
+
+  const geometry = matching.map((_, index) => {
+    if (kind === "dialogue") {
+      const columns = 2;
+      const rows = Math.ceil(matching.length / columns);
+      const horizontalGap = .04;
+      const verticalGap = Math.min(.03, .12 / (rows + 1));
+      const width = (.92 - horizontalGap) / columns;
+      const height = Math.min(.22, (.58 - verticalGap * (rows - 1)) / rows);
+      return {
+        x: rounded(.04 + (index % columns) * (width + horizontalGap)),
+        y: rounded(.06 + Math.floor(index / columns) * (height + verticalGap)),
+        width: rounded(width),
+        height: rounded(height),
+      };
+    }
+
+    const gap = Math.min(.02, .12 / (matching.length + 1));
+    const height = (.32 - gap * (matching.length - 1)) / matching.length;
+    return {
+      x: .08,
+      y: rounded(.64 + index * (height + gap)),
+      width: .84,
+      height: rounded(height),
+    };
+  });
+  const byId = new Map(matching.map((overlay, index) => [
+    overlay.id,
+    { ...overlay, ...geometry[index]! },
+  ]));
+  return overlays.map((overlay) => byId.get(overlay.id) ?? overlay);
+}
+
+function drawingStatus({
+  busy,
+  configStatus,
+  saveState,
+  hasApprovedHero,
+  action,
+  setting,
+  hasApprovedPanel,
+}: {
+  busy: boolean;
+  configStatus: GenerationConfigStatus;
+  saveState: SaveState;
+  hasApprovedHero: boolean;
+  action: string;
+  setting: string;
+  hasApprovedPanel: boolean;
+}): string {
+  if (busy) {
+    return "Drawing your panel now. Editing and navigation stay locked until it finishes.";
+  }
+  if (configStatus === "loading") {
+    return "Checking the art studio. Your panel directions and words still save.";
+  }
+  if (configStatus === "disabled") {
+    return "Drawing stays off in Sample mode. Your panel directions and words still save.";
+  }
+  if (configStatus === "error") {
+    return "The art studio could not be checked. Your panel directions and words still save.";
+  }
+  if (saveState === "dirty" || saveState === "saving") {
+    return "Your changes are still saving. Drawing unlocks after they are saved.";
+  }
+  if (saveState === "loading") {
+    return "Opening your saved panel before drawing.";
+  }
+  if (saveState === "error") {
+    return "Fix the save error before drawing this panel.";
+  }
+  if (!hasApprovedHero) {
+    return "Approve a hero first. Go to Hero, choose a candidate, and use that version.";
+  }
+  if (!action.trim()) {
+    return "Describe what happens before drawing this panel.";
+  }
+  if (!setting.trim()) {
+    return "Describe where they are before drawing this panel.";
+  }
+  return hasApprovedPanel
+    ? "Ready to re-draw this panel. Your current approved image and words stay safe."
+    : "Ready to draw this panel. Your words stay editable.";
+}
+
 export function PanelWorkshop({
   project,
   api,
@@ -91,6 +186,12 @@ export function PanelWorkshop({
     return () => onBusyChange?.(false);
   }, [busy, onBusyChange]);
 
+  useEffect(() => {
+    setQuickChange("");
+    setCustomDirection("");
+    setNotice(undefined);
+  }, [panel.id]);
+
   const updatePanel = (mutator: (current: typeof panel) => typeof panel) => {
     if (busy) return;
     onChange({
@@ -120,7 +221,10 @@ export function PanelWorkshop({
           width: .84,
           height: .16,
         };
-    updatePanel((current) => ({ ...current, overlays: [...current.overlays, overlay] }));
+    updatePanel((current) => ({
+      ...current,
+      overlays: layoutRepeatedOverlays([...current.overlays, overlay], kind),
+    }));
   };
 
   const approved = panel.imageVersions.find(
@@ -134,6 +238,15 @@ export function PanelWorkshop({
     || !project.hero.approvedReferenceImageId
     || !panel.action.trim()
     || !panel.setting.trim();
+  const drawStatus = drawingStatus({
+    busy,
+    configStatus,
+    saveState,
+    hasApprovedHero: Boolean(project.hero.approvedReferenceImageId),
+    action: panel.action,
+    setting: panel.setting,
+    hasApprovedPanel: Boolean(approved),
+  });
 
   const beginRequest = () => ({
     id: ++requestIdentity.current,
@@ -309,10 +422,12 @@ export function PanelWorkshop({
             className="button button-primary panel-draw-button"
             type="button"
             disabled={drawDisabled}
+            aria-describedby="panel-drawing-status"
             onClick={generate}
           >
             {approved ? "Re-draw panel" : "Draw my panel"}
           </button>
+          <p className="drawing-status" id="panel-drawing-status">{drawStatus}</p>
           {notice ? (
             <p
               className={`drawing-notice drawing-notice-${notice.tone}`}

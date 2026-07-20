@@ -194,6 +194,45 @@ describe("GenerationService", () => {
     );
   });
 
+  it("resolves every older active candidate when approving the newest panel and hero versions", async () => {
+    const project = makeProjectWithApprovedPanel();
+    project.panels[0]!.imageVersions.push(
+      {
+        ...project.panels[0]!.imageVersions[1]!,
+        id: "panel-candidate-b",
+        localPath: "images/panel-candidate-b.png",
+      },
+    );
+    project.hero.imageVersions.push(
+      {
+        ...project.hero.imageVersions[1]!,
+        id: "hero-candidate-b",
+        localPath: "images/hero-candidate-b.png",
+      },
+    );
+    const { service } = await createGenerationHarness(project);
+
+    const panelApproved = await service.approvePanelVersion(
+      project.id,
+      project.panels[0]!.id,
+      "panel-candidate-b",
+    );
+    expect(panelApproved.panels[0]!.imageVersions.map(({ id, status }) => ({ id, status })))
+      .toEqual([
+        { id: "approved-old", status: "rejected" },
+        { id: "panel-candidate", status: "rejected" },
+        { id: "panel-candidate-b", status: "approved" },
+      ]);
+
+    const heroApproved = await service.approveHero(project.id, "hero-candidate-b");
+    expect(heroApproved.project.hero.imageVersions.map(({ id, status }) => ({ id, status })))
+      .toEqual([
+        { id: "hero-approved", status: "rejected" },
+        { id: "hero-candidate", status: "rejected" },
+        { id: "hero-candidate-b", status: "approved" },
+      ]);
+  });
+
   it("reports heroReferenceChanged only when approval replaces a reference and keeps panels unchanged", async () => {
     const project = makeProjectWithApprovedPanel();
     const originalPanels = structuredClone(project.panels);

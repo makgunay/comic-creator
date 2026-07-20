@@ -55,15 +55,19 @@ Begin Task 7 now that Task 6 passes deterministic and browser verification.
   later mutation failure; failures never replace approved artwork.
 - Generation completion merges into the latest project revision, preserving
   concurrent authored edits, approved version IDs, version history, and overlays.
+- Explicit approval keeps every image/version file while resolving the selected
+  version to approved and every competing active version to rejected. Candidate
+  artwork never replaces the large approved hero or panel preview automatically.
 - Hero replacement affects future generation only; existing panels remain
   unchanged. Client responses are guarded by request, project, API, and mount
   identity before they can change UI state.
 - The project image route validates project membership, declared local paths,
   containment, regular files, and square PNG shape without requiring an API key.
 - Browser fallback QA inspected accepted hero/panel concepts and local desktop and
-  390x844 renders. The panel canvas is wide, desktop controls remain visible,
-  mobile has no horizontal overflow, and interactive targets are at least 44 px.
-- Task 6 verification passes typecheck, 148/148 deterministic tests, production
+  390x844 renders. Mobile navigation is a static one-row control after the
+  editor/version content, with no field intersection or horizontal overflow;
+  interactive targets are at least 44 px.
+- Task 6 verification passes typecheck, 157/157 deterministic tests, production
   build, and diff check without a live or paid OpenAI request.
 
 ## Active decisions

@@ -236,11 +236,7 @@ export class GenerationService {
           approvedReferenceImageId: imageId,
           imageVersions: latest.hero.imageVersions.map((version) => ({
             ...version,
-            status: version.id === imageId
-              ? "approved" as const
-              : version.status === "approved"
-                ? "rejected" as const
-                : version.status,
+            status: version.id === imageId ? "approved" as const : "rejected" as const,
           })),
         },
       });

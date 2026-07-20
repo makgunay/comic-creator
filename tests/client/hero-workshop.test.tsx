@@ -113,6 +113,19 @@ describe("HeroWorkshop", () => {
     expect(rejectHeroCandidate).toHaveBeenCalledWith(project.id, "hero-candidate");
   });
 
+  it("keeps approved hero artwork featured while a candidate waits for an explicit choice", () => {
+    const project = makeProjectWithApprovedPanel();
+    const imageUrl = vi.fn((_projectId: string, imageId: string) => `/images/${imageId}.png`);
+    render(<Harness project={project} api={makeClientApi(project, { imageUrl })} />);
+
+    expect(screen.getAllByRole("presentation")[0]).toHaveAttribute(
+      "src",
+      "/images/hero-approved.png",
+    );
+    expect(screen.getByText("Newest candidate")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use this version" })).toBeEnabled();
+  });
+
   it("shows generated project artwork through validated image URLs", () => {
     const project = makeProject();
     project.hero.childDescription = "Nova";
@@ -141,6 +154,32 @@ describe("HeroWorkshop", () => {
 
     expect(screen.getByRole("button", { name: "Dismiss candidate" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Keep current" })).not.toBeInTheDocument();
+  });
+
+  it("tells a first-time hero author to choose or dismiss the generated candidate", async () => {
+    const project = makeProject();
+    project.hero.childDescription = "Nova wears a violet jacket.";
+    const generated = structuredClone(project);
+    generated.hero.imageVersions = [makeImageVersion({
+      id: "first-candidate",
+      localPath: "images/first-candidate.png",
+      status: "candidate",
+    })];
+    render(
+      <Harness
+        project={project}
+        api={makeClientApi(project, {
+          generateHero: vi.fn().mockResolvedValue({ project: generated }),
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Draw my hero" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /choose it explicitly or dismiss the candidate/i,
+    );
+    expect(screen.queryByText(/keep your current hero/i)).not.toBeInTheDocument();
   });
 
   it("does not announce a candidate when the server project is not accepted", async () => {

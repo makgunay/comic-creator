@@ -18,7 +18,7 @@ export function approveImageVersion(panel: Panel, versionId: string): Panel {
     approvedImageVersionId: versionId,
     imageVersions: panel.imageVersions.map((version) => ({
       ...version,
-      status: version.id === versionId ? "approved" : version.status === "approved" ? "rejected" : version.status,
+      status: version.id === versionId ? "approved" : "rejected",
     })),
   };
 }

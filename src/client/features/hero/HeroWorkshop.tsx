@@ -69,7 +69,7 @@ export function HeroWorkshop({
   const fallbackPanelVersion = project.panels
     .flatMap((panel) => panel.imageVersions)
     .find((version) => version.status === "approved");
-  const featured = candidate ?? approved ?? fallbackPanelVersion;
+  const featured = approved ?? candidate ?? fallbackPanelVersion;
   const featuredUrl = featured
     ? api.imageUrl(project.id, featured.id)
     : sampleArtwork;
@@ -118,7 +118,9 @@ export function HeroWorkshop({
       }
       setNotice({
         tone: "info",
-        text: "A new candidate is ready. Choose it explicitly or keep your current hero.",
+        text: approved
+          ? "A new candidate is ready. Choose it explicitly or keep your current hero."
+          : "A new candidate is ready. Choose it explicitly or dismiss the candidate.",
       });
     } catch (error) {
       if (isCurrentRequest(request)) {

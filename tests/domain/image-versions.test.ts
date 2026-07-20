@@ -19,7 +19,7 @@ describe("approveImageVersion", () => {
     expect(updated.imageVersions.find((version) => version.id === "old")?.status).toBe("rejected");
   });
 
-  it("does not mutate the input and leaves other candidates unchanged", () => {
+  it("does not mutate the input and rejects every unselected active version", () => {
     const panel = makePanel({
       approvedImageVersionId: "old",
       imageVersions: [
@@ -37,7 +37,7 @@ describe("approveImageVersion", () => {
       "candidate",
       "candidate",
     ]);
-    expect(updated.imageVersions.find((version) => version.id === "other")?.status).toBe("candidate");
+    expect(updated.imageVersions.find((version) => version.id === "other")?.status).toBe("rejected");
   });
 
   it("rejects approval of a version that is not a candidate", () => {
