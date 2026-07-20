@@ -10,9 +10,8 @@ acceptance gate is not passed.
 
 ## Current focus
 
-Complete the final no-key add-panel browser revalidation after permission to
-open a fresh Chrome window, then ask the user whether to retain or revise D-007
-before treating Checkpoint 3 as complete.
+Ask the user whether to retain or revise D-007 before treating Checkpoint 3 as
+complete.
 
 ## Verified facts
 
@@ -36,12 +35,17 @@ before treating Checkpoint 3 as complete.
 - D-007 remains the accepted 35-second observed panel target. Current variance
   is material: three Task 8 panel image calls exceeded it, while three completed
   under it. No retry was made to improve the numbers.
-- Earlier manual browser proof covered desktop, tablet, mobile, keyboard
+- Manual browser proof covered desktop, tablet, mobile, keyboard
   traversal, visible focus, labels, target size, reduced motion, effective 200%
   reflow, sample persistence, safe export failure, and zero normal-path console
-  errors. The distinct final no-key add-panel journey still needs revalidation
-  at 1440, 1024, and 390 pixel widths. IAB and Chrome extension bindings were
-  unavailable; permission to open a fresh Chrome window is pending.
+  errors. The distinct final no-key add-panel journey also passed in the in-app
+  browser at 1440, 1024, and 390 pixel widths: a panel was inserted into the
+  Problem beat, edited, saved, recovered after reload, navigated as panel 3 of
+  5, and rendered by Premiere as page 1 of 2 plus page 2 of 2. The three widths
+  had no horizontal overflow; the add-panel control was 44 pixels high, and no
+  sampled mobile Panel or Premiere control was smaller than 40 pixels. The
+  browser reported no warnings or errors. Generation remained disabled and no
+  paid request was made.
 - Manual PDF proof: live and no-key PDFs rendered as clean, unencrypted,
   one-page US Letter documents with exact extracted overlays and no clipping,
   overlap, distortion, or broken glyph.
@@ -49,9 +53,8 @@ before treating Checkpoint 3 as complete.
   Sharp and the pinned TypeScript launcher; the production server recovered an
   interrupted project before listening. A separate clean checkout passed
   `npm ci && npm run verify`.
-- Checkpoint 3 has exactly two open gates: final no-key add-panel browser
-  revalidation at 1440, 1024, and 390 pixel widths, and the user decision to
-  retain or revise D-007.
+- Checkpoint 3 has exactly one open gate: the user decision to retain or revise
+  D-007.
 - The Devpost project remains a draft; `makgunay/comic-creator` is private and
   has no open-source license. The category is `Education`; the deadline is
   2026-07-21 at 5:00 PM Pacific Time.
@@ -72,9 +75,6 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Blockers and unknowns
 
-- Final no-key add-panel browser revalidation is blocked pending permission to
-  open a fresh Chrome window after both IAB and Chrome extension bindings were
-  unavailable. Earlier completed broad visual QA remains valid.
 - Live latency acceptance is partial, not passed: three of six Task 8 panel
   image samples exceeded D-007. The user must retain or revise that decision
   before Checkpoint 3 can close.
@@ -83,13 +83,12 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Next actions
 
-1. After permission, open a fresh Chrome window and revalidate the no-key
-   add-panel journey at 1440, 1024, and 390 pixel widths.
-2. Ask the user to retain or revise D-007 based on the live variance.
-3. Record the public demo and capture the primary `/feedback` session ID.
-4. Grant required private-repository access and finish the Devpost submission.
+1. Ask the user to retain or revise D-007 based on the live variance.
+2. Record the public demo and capture the primary `/feedback` session ID.
+3. Grant required private-repository access and finish the Devpost submission.
 
 ## Resume cue
 
 Read `README.md`, this state, the active plan, and the Task 8 SDD report. Resume
-with the first incomplete submission action; two-author stretch is unstarted.
+with the D-007 decision, then the first incomplete submission action;
+two-author stretch is unstarted.

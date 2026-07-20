@@ -63,17 +63,16 @@ early feasibility gate.
   Sharp installation and the full deterministic verification command.
 - [x] Perform manual product, accessibility, PDF, and visual QA.
 - [x] Keep README, notices, and project state aligned with verified behavior.
-- [ ] Revalidate the final no-key add-panel journey at 1440, 1024, and 390
-  pixel widths after permission to open a fresh Chrome window; IAB and Chrome
-  extension bindings were unavailable.
+- [x] Revalidate the final no-key add-panel journey at 1440, 1024, and 390
+  pixel widths in the in-app browser, including saved-project reload, panel
+  direction, five-panel navigation, and Premiere page 2.
 - [ ] Resolve D-007 acceptance with the user: retain or revise the 35-second
   observed panel target after three of six Task 8 panel samples exceeded it.
 
 Functional acceptance passes: a judge can run the project and reproduce the
 sample demo. Planned implementation and deterministic correction work is
-complete. Checkpoint closure has exactly two open gates: the final no-key
-add-panel browser revalidation and the D-007 decision. Live latency acceptance
-is partial, not passed.
+complete. Checkpoint closure has exactly one open gate: the D-007 decision.
+Live latency acceptance is partial, not passed.
 
 ### 4. Prepare and submit — pending
 
