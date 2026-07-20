@@ -53,8 +53,8 @@ Begin Task 5 now that Task 4 passes deterministic verification.
   tuned panel measurements of 31,272 and 32,335 ms. The existing matched smoke
   therefore passes: hero 29,891 ms <= 60,000 ms and panel 32,335 ms <= 35,000
   ms. No new live request was made for this decision update.
-- Task 4 adds schema-valid persistence, canonical asset keys, symlink-contained
-  paths, atomic replacement, one rolling backup, and corrupt-file recovery.
+- Task 4 adds schema-valid persistence, canonical asset keys, contained paths,
+  whole-directory first saves, paired current/backup rollback, and recovery.
 - The injected server factory now exposes public config plus create, load,
   update, and sample-copy routes. Strict create-input and body-parser failures
   return non-retryable product-safe client errors with no secret values.
@@ -66,10 +66,10 @@ Begin Task 5 now that Task 4 passes deterministic verification.
   project outside the live namespace, atomically publishes it, and quarantines
   failures without orphan assets. It leaves tracked fixtures unchanged and
   succeeds without an API key, network request, or generation-provider call.
-- Injected save, backup, sample-copy, and builder failures preserve known-good
-  data and leave no temporary residue in the live projects namespace.
-- Task 4 focused verification passes 48/48 tests. Full `npm run verify` passes
-  strict typechecking, 76/76 deterministic tests, and the production build.
+- Injected transaction failures preserve byte-identical current and previous
+  data; cleanup failures aggregate both errors and leave residue only in staging.
+- Task 4 focused verification passes 50/50 tests. Full `npm run verify` passes
+  strict typechecking, 78/78 deterministic tests, and the production build.
   No paid or live OpenAI request was made for Task 4.
 
 ## Active decisions

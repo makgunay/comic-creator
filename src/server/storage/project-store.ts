@@ -215,6 +215,25 @@ export class ProjectStore {
     }
   }
 
+  private async failWithCleanup(
+    primaryError: unknown,
+    candidates: readonly string[],
+    label: string,
+  ): Promise<never> {
+    try {
+      await this.quarantineExisting(candidates, label);
+    } catch (cleanupError) {
+      const primaryErrors = primaryError instanceof AggregateError
+        ? [...primaryError.errors]
+        : [primaryError];
+      throw new AggregateError(
+        [...primaryErrors, cleanupError],
+        "Storage transaction and recovery both failed",
+      );
+    }
+    throw primaryError;
+  }
+
   private async assertRegularContainedFile(
     container: string,
     filename: string,
@@ -244,56 +263,114 @@ export class ProjectStore {
     return project;
   }
 
+  private async saveNewProject(
+    project: Project,
+    liveProject: string,
+    stagingRoot: string,
+  ): Promise<void> {
+    const stagedProject = path.join(
+      stagingRoot,
+      `project-${project.id}-${randomUUID()}`,
+    );
+    const stagedImages = path.join(stagedProject, "images");
+    const stagedDocument = path.join(stagedProject, "project.json");
+    try {
+      await this.ensureDirectory(stagedImages);
+      await this.fileSystem.writeFile(
+        stagedDocument,
+        `${JSON.stringify(project, null, 2)}\n`,
+        "utf8",
+      );
+      await this.readDocument(stagedDocument);
+      await this.ensureDirectory(path.join(this.root, "projects"));
+      await this.assertSafePath(liveProject);
+      if (await this.lstatIfExists(liveProject)) {
+        throw Object.assign(new Error("Project already exists"), {
+          code: "already_exists",
+        });
+      }
+      await this.fileSystem.rename(stagedProject, liveProject);
+    } catch (error) {
+      await this.failWithCleanup(
+        error,
+        [stagedProject],
+        `save-${project.id}`,
+      );
+    }
+  }
+
+  private async saveExistingProject(
+    project: Project,
+    directory: string,
+    stagingRoot: string,
+  ): Promise<void> {
+    const current = path.join(directory, "project.json");
+    const previous = path.join(directory, "project.previous.json");
+    const token = `save-${project.id}-${randomUUID()}`;
+    const stagedCurrent = path.join(stagingRoot, `${token}.project.json`);
+    const stagedPrevious = path.join(stagingRoot, `${token}.previous.json`);
+    let hasStagedPrevious = false;
+
+    try {
+      await this.fileSystem.writeFile(
+        stagedCurrent,
+        `${JSON.stringify(project, null, 2)}\n`,
+        "utf8",
+      );
+      await this.readDocument(stagedCurrent);
+      await this.assertSafePath(current);
+      await this.assertSafePath(previous);
+
+      try {
+        await this.readDocument(current);
+        await this.fileSystem.copyFile(current, stagedPrevious);
+        await this.readDocument(stagedPrevious);
+        hasStagedPrevious = true;
+      } catch (error) {
+        if (!canRecoverFrom(error)) throw error;
+      }
+
+      await this.fileSystem.rename(stagedCurrent, current);
+      if (hasStagedPrevious) {
+        try {
+          await this.fileSystem.rename(stagedPrevious, previous);
+        } catch (backupError) {
+          try {
+            await this.fileSystem.rename(stagedPrevious, current);
+          } catch (rollbackError) {
+            throw new AggregateError(
+              [backupError, rollbackError],
+              "Backup publication and current rollback both failed",
+            );
+          }
+          throw backupError;
+        }
+      }
+    } catch (error) {
+      await this.failWithCleanup(
+        error,
+        [stagedCurrent, stagedPrevious],
+        `save-${project.id}`,
+      );
+    }
+  }
+
   async save(project: Project): Promise<void> {
     const valid = ProjectSchema.parse(project);
     const previousWrite = this.writes.get(valid.id) ?? Promise.resolve();
     const write = previousWrite.catch(() => undefined).then(async () => {
       const directory = this.projectDir(valid.id);
-      const images = path.join(directory, "images");
-      const current = path.join(directory, "project.json");
-      const previous = path.join(directory, "project.previous.json");
       const staging = path.join(this.root, "staging");
-      const token = `save-${valid.id}-${randomUUID()}`;
-      const stagedCurrent = path.join(staging, `${token}.project.json`);
-      const stagedPrevious = path.join(staging, `${token}.previous.json`);
 
       await this.ensureDirectory(staging);
       await this.assertSafePath(directory);
       const liveDirectoryExisted = Boolean(
         await this.lstatIfExists(directory),
       );
-      try {
-        await this.fileSystem.writeFile(
-          stagedCurrent,
-          `${JSON.stringify(valid, null, 2)}\n`,
-          "utf8",
-        );
-        await this.readDocument(stagedCurrent);
-        await this.ensureDirectory(images);
-        await this.assertSafePath(current);
-        await this.assertSafePath(previous);
-
-        try {
-          await this.readDocument(current);
-          await this.fileSystem.copyFile(current, stagedPrevious);
-          await this.readDocument(stagedPrevious);
-          await this.fileSystem.rename(stagedPrevious, previous);
-        } catch (error) {
-          if (!canRecoverFrom(error)) throw error;
-        }
-
-        await this.assertSafePath(current);
-        await this.fileSystem.rename(stagedCurrent, current);
-      } catch (error) {
-        await this.quarantineExisting(
-          [
-            stagedCurrent,
-            stagedPrevious,
-            ...(liveDirectoryExisted ? [] : [directory]),
-          ],
-          `save-${valid.id}`,
-        );
-        throw error;
+      if (liveDirectoryExisted) {
+        await this.saveExistingProject(valid, directory, staging);
+      } else {
+        await this.saveNewProject(valid, directory, staging);
       }
     });
 
@@ -359,11 +436,11 @@ export class ProjectStore {
       }
       await this.fileSystem.rename(stagedProject, liveProject);
     } catch (error) {
-      await this.quarantineExisting(
+      await this.failWithCleanup(
+        error,
         [stagedProject],
         `project-${valid.id}`,
       );
-      throw error;
     }
   }
 

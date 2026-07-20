@@ -192,14 +192,13 @@ describe("ProjectStore", () => {
     expect(await entriesOrEmpty(path.join(root, "recovery"))).not.toEqual([]);
   });
 
-  it("quarantines a newly created live directory when first publish fails", async () => {
+  it("quarantines the staged project when first publish fails", async () => {
     const root = testRoot("project-store-first-publish-failure");
     const project = makeProject();
+    const liveProject = path.join(root, "projects", project.id);
     const failingStore = new ProjectStore(
       root,
-      filesystemFailingRename((_source, target) =>
-        path.basename(target) === "project.json"
-      ),
+      filesystemFailingRename((_source, target) => target === liveProject),
     );
 
     await expect(failingStore.save(project)).rejects.toThrow(
@@ -241,7 +240,7 @@ describe("ProjectStore", () => {
     expect(await entriesOrEmpty(path.join(root, "recovery"))).not.toEqual([]);
   });
 
-  it("quarantines staged backup data when backup publish fails", async () => {
+  it("rolls back current without residue when backup publish fails", async () => {
     const root = testRoot("project-store-backup-failure");
     const project = makeProject();
     const stableStore = new ProjectStore(root);
@@ -264,6 +263,93 @@ describe("ProjectStore", () => {
       (await entriesOrEmpty(path.join(root, "projects", project.id)))
         .filter((entry) => entry.includes(".tmp")),
     ).toEqual([]);
-    expect(await entriesOrEmpty(path.join(root, "recovery"))).not.toEqual([]);
+    expect(await entriesOrEmpty(path.join(root, "staging"))).toEqual([]);
+    expect(await entriesOrEmpty(path.join(root, "recovery"))).toEqual([]);
+  });
+
+  it("preserves current v2 and previous v1 byte-for-byte when v3 current publish fails", async () => {
+    const root = testRoot("project-store-current-publish-contract");
+    const projectV1 = makeProject();
+    const stableStore = new ProjectStore(root);
+    await stableStore.save(projectV1);
+    const projectV2 = {
+      ...projectV1,
+      title: "Version two",
+      updatedAt: "2026-07-20T04:00:00.000Z",
+    };
+    await stableStore.save(projectV2);
+    const liveDirectory = path.join(root, "projects", projectV1.id);
+    const currentPath = path.join(liveDirectory, "project.json");
+    const previousPath = path.join(liveDirectory, "project.previous.json");
+    const currentBefore = await fs.readFile(currentPath);
+    const previousBefore = await fs.readFile(previousPath);
+    const liveEntriesBefore = (await fs.readdir(liveDirectory)).sort();
+    const failingStore = new ProjectStore(
+      root,
+      filesystemFailingRename((_source, target) =>
+        target === currentPath
+      ),
+    );
+
+    await expect(failingStore.save({
+      ...projectV2,
+      title: "Version three must not publish",
+      updatedAt: "2026-07-20T05:00:00.000Z",
+    })).rejects.toThrow("Injected rename failure");
+
+    expect(await fs.readFile(currentPath)).toEqual(currentBefore);
+    expect(await fs.readFile(previousPath)).toEqual(previousBefore);
+    expect((await fs.readdir(liveDirectory)).sort()).toEqual(liveEntriesBefore);
+  });
+
+  it("keeps first-save residue in staging and aggregates publish plus quarantine failures", async () => {
+    const root = testRoot("project-store-publish-cleanup-failure");
+    const project = makeProject();
+    const liveProject = path.join(root, "projects", project.id);
+    const baseFileSystem = filesystemFailingRename(() => false);
+    let publishFailed = false;
+    const failingStore = new ProjectStore(root, {
+      ...baseFileSystem,
+      mkdir: async (directory, options) => {
+        if (publishFailed && directory === path.join(root, "recovery")) {
+          throw Object.assign(new Error("Injected quarantine creation failure"), {
+            code: "EACCES",
+          });
+        }
+        return fs.mkdir(directory, options);
+      },
+      rename: async (source, target) => {
+        if (
+          !publishFailed
+          && (
+            target === liveProject
+            || target === path.join(liveProject, "project.json")
+          )
+        ) {
+          publishFailed = true;
+          throw Object.assign(new Error("Injected first publish failure"), {
+            code: "EIO",
+          });
+        }
+        return fs.rename(source, target);
+      },
+    });
+
+    let caught: unknown;
+    try {
+      await failingStore.save(project);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(AggregateError);
+    expect((caught as AggregateError).errors.map((error: Error) => error.message))
+      .toEqual([
+        "Injected first publish failure",
+        "Injected quarantine creation failure",
+      ]);
+    expect(await entriesOrEmpty(path.join(root, "projects"))).toEqual([]);
+    expect(await entriesOrEmpty(path.join(root, "recovery"))).toEqual([]);
+    expect(await entriesOrEmpty(path.join(root, "staging"))).toHaveLength(1);
   });
 });
