@@ -3,6 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { PDFDocument } from "pdf-lib";
 import request from "supertest";
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../../src/server/app";
 import { readConfig } from "../../src/server/config";
@@ -120,5 +121,59 @@ describe("GET /api/projects/:id/export.pdf", () => {
     expect(unsafe.body.error).toMatchObject({ code: "export", retryable: false });
     expect(missing.status).toBe(404);
     expect(missing.body.error).toMatchObject({ code: "export", retryable: false });
+  });
+
+  it("classifies malformed, non-square, and symlinked approved assets as recoverable export failures", async () => {
+    const cases = [
+      {
+        label: "malformed",
+        corrupt: async (filename: string) => fs.writeFile(filename, "not a png"),
+      },
+      {
+        label: "non-square",
+        corrupt: async (filename: string) => fs.writeFile(
+          filename,
+          await sharp({
+            create: {
+              width: 16,
+              height: 8,
+              channels: 4,
+              background: { r: 111, g: 81, b: 216, alpha: 1 },
+            },
+          }).png().toBuffer(),
+        ),
+      },
+      {
+        label: "symlink",
+        corrupt: async (filename: string) => {
+          const outside = `${filename}.outside`;
+          await fs.rename(filename, outside);
+          await fs.symlink(outside, filename);
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const { app, store } = harness(`export-route-${testCase.label}-asset`);
+      const project = await new SampleProvider(fixtureRoot, store).copyToProject();
+      const imageId = project.panels[0]!.approvedImageVersionId!;
+      const filename = await store.resolveImageAsset(project.id, imageId);
+      await testCase.corrupt(filename);
+
+      const response = await request(app)
+        .get(`/api/projects/${project.id}/export.pdf`);
+
+      expect(response.status, testCase.label).toBe(409);
+      expect(response.body, testCase.label).toEqual({
+        error: {
+          code: "export",
+          message: "Approved artwork could not be read. Check the panel approval and try again.",
+          retryable: true,
+        },
+      });
+      expect(JSON.stringify(response.body)).not.toMatch(
+        /project link|invalid_path|ENOENT|\/Users\/|tmp\/|stack/i,
+      );
+    }
   });
 });

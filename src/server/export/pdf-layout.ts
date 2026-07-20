@@ -20,6 +20,13 @@ export interface PdfOverlayLayout {
   height: number;
 }
 
+export interface PdfArtBoxLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface PdfPanelLayout {
   panelId: string;
   panelNumber: number;
@@ -28,6 +35,7 @@ export interface PdfPanelLayout {
   y: number;
   width: number;
   height: number;
+  artBox: PdfArtBoxLayout;
   overlays: PdfOverlayLayout[];
 }
 
@@ -73,6 +81,12 @@ export function buildPdfLayout(project: Project): PdfPageLayout[] {
       const row = Math.floor(slot / 2);
       const x = PDF_PAGE.margin + column * (panelSize + PDF_PAGE.gutter);
       const y = gridBottom + (1 - row) * (panelSize + PDF_PAGE.gutter);
+      const artBox = {
+        x: x + 2,
+        y: y + 2,
+        width: panelSize - 4,
+        height: panelSize - 4,
+      };
       panel.overlays.forEach(assertContainedOverlay);
       return {
         panelId: panel.id,
@@ -84,13 +98,16 @@ export function buildPdfLayout(project: Project): PdfPageLayout[] {
         y,
         width: panelSize,
         height: panelSize,
+        artBox,
         overlays: panel.overlays.map((overlay) => ({
           kind: overlay.kind,
           text: overlay.text,
-          x: x + overlay.x * panelSize,
-          y: y + panelSize - (overlay.y + overlay.height) * panelSize,
-          width: overlay.width * panelSize,
-          height: overlay.height * panelSize,
+          x: artBox.x + overlay.x * artBox.width,
+          y: artBox.y
+            + artBox.height
+            - (overlay.y + overlay.height) * artBox.height,
+          width: overlay.width * artBox.width,
+          height: overlay.height * artBox.height,
         })),
       };
     }),

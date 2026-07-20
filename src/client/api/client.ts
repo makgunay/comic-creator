@@ -57,6 +57,11 @@ export interface RequestOptions {
   keepalive?: boolean;
 }
 
+export interface PdfDownload {
+  blob: Blob;
+  filename: string;
+}
+
 export interface ComicApi {
   config(options?: RequestOptions): Promise<PublicConfig>;
   createProject(input: CreateProjectInput, options?: RequestOptions): Promise<Project>;
@@ -69,6 +74,7 @@ export interface ComicApi {
   generatePanel(projectId: string, panelId: string, input: PanelGenerationInput, options?: RequestOptions): Promise<ProjectResponse>;
   approvePanelVersion(projectId: string, panelId: string, versionId: string, options?: RequestOptions): Promise<ProjectResponse>;
   rejectPanelCandidate(projectId: string, panelId: string, versionId: string, options?: RequestOptions): Promise<ProjectResponse>;
+  downloadPdf(projectId: string, options?: RequestOptions): Promise<PdfDownload>;
   imageUrl(projectId: string, imageId: string): string;
   exportUrl(projectId: string): string;
 }
@@ -145,6 +151,14 @@ function requestInit(
     ...(options.signal ? { signal: options.signal } : {}),
     keepalive: options.keepalive ?? false,
   };
+}
+
+function pdfFilename(response: Response): string {
+  const disposition = response.headers.get("content-disposition");
+  const match = disposition?.match(
+    /^attachment;\s*filename="([a-zA-Z0-9][a-zA-Z0-9_-]{0,79}\.pdf)"$/,
+  );
+  return match?.[1] ?? "comic.pdf";
 }
 
 export class ComicApiClient implements ComicApi {
@@ -286,6 +300,35 @@ export class ComicApiClient implements ComicApi {
       requestInit("POST", options, {}),
       ProjectResponseSchema.parse,
     );
+  }
+
+  async downloadPdf(
+    projectId: string,
+    options: RequestOptions = {},
+  ): Promise<PdfDownload> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/projects/${encodeURIComponent(projectId)}/export.pdf`,
+        requestInit("GET", options),
+      );
+      if (!response.ok) {
+        return await decode(response, () => {
+          throw new ComicApiError(unreadableResponse);
+        });
+      }
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !/^application\/pdf(?:\s*;|$)/i.test(contentType)) {
+        throw new ComicApiError(unreadableResponse);
+      }
+      return {
+        blob: await response.blob(),
+        filename: pdfFilename(response),
+      };
+    } catch (error) {
+      if (error instanceof ComicApiError) throw error;
+      if (error instanceof DOMException && error.name === "AbortError") throw error;
+      throw new ComicApiError(unavailableServer);
+    }
   }
 
   imageUrl(projectId: string, imageId: string): string {

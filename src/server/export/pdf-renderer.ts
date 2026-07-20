@@ -1,9 +1,14 @@
 import {
   PDFDocument,
+  PDFHexString,
+  PDFName,
+  PDFOperator,
+  PDFOperatorNames,
   StandardFonts,
   rgb,
   type PDFFont,
   type PDFPage,
+  type PDFPageDrawTextOptions,
 } from "pdf-lib";
 import type { Project } from "../../domain/project";
 import { PdfExportError } from "./export-error";
@@ -23,11 +28,42 @@ interface FittedText {
 }
 
 function assertEncodable(font: PDFFont, text: string): void {
+  if (/[\t\r]/.test(text)) {
+    throw new PdfExportError(unsupportedGlyphMessage);
+  }
   try {
     font.encodeText(text);
   } catch {
     throw new PdfExportError(unsupportedGlyphMessage);
   }
+}
+
+export function wrapPdfParagraph(
+  paragraph: string,
+  measure: (value: string) => number,
+  maxWidth: number,
+): string[] | undefined {
+  if (paragraph === "") return [""];
+  if (/[\t\r\n]/.test(paragraph)) return undefined;
+
+  const tokens = paragraph.match(/ +|[^ ]+/g);
+  if (!tokens) return [""];
+  const lines: string[] = [];
+  let line = "";
+
+  for (const token of tokens) {
+    if (measure(token) > maxWidth) return undefined;
+    const candidate = `${line}${token}`;
+    if (measure(candidate) <= maxWidth) {
+      line = candidate;
+    } else {
+      if (line) lines.push(line);
+      line = token;
+    }
+  }
+
+  lines.push(line);
+  return lines;
 }
 
 function wrapText(
@@ -37,26 +73,16 @@ function wrapText(
   maxWidth: number,
 ): string[] | undefined {
   const lines: string[] = [];
-  const paragraphs = text.replace(/\r\n?/g, "\n").split("\n");
+  const paragraphs = text.split("\n");
 
   for (const paragraph of paragraphs) {
-    if (paragraph === "") {
-      lines.push("");
-      continue;
-    }
-    const words = paragraph.split(/\s+/);
-    let line = "";
-    for (const word of words) {
-      if (font.widthOfTextAtSize(word, fontSize) > maxWidth) return undefined;
-      const candidate = line ? `${line} ${word}` : word;
-      if (font.widthOfTextAtSize(candidate, fontSize) <= maxWidth) {
-        line = candidate;
-      } else {
-        lines.push(line);
-        line = word;
-      }
-    }
-    lines.push(line);
+    const wrapped = wrapPdfParagraph(
+      paragraph,
+      (value) => font.widthOfTextAtSize(value, fontSize),
+      maxWidth,
+    );
+    if (!wrapped) return undefined;
+    lines.push(...wrapped);
   }
 
   return lines;
@@ -103,6 +129,21 @@ function fitSingleLine(
   throw new PdfExportError(textOverflowMessage);
 }
 
+function drawAuthoredText(
+  page: PDFPage,
+  text: string,
+  options: PDFPageDrawTextOptions,
+): void {
+  const properties =
+    `<< /ActualText ${PDFHexString.fromText(text).toString()} >>`;
+  page.pushOperators(PDFOperator.of(
+    PDFOperatorNames.BeginMarkedContentSequence,
+    [PDFName.of("Span"), properties],
+  ));
+  page.drawText(text, options);
+  page.pushOperators(PDFOperator.of(PDFOperatorNames.EndMarkedContent));
+}
+
 function drawOverlay(
   page: PDFPage,
   overlay: PdfOverlayLayout,
@@ -129,7 +170,7 @@ function drawOverlay(
     const centeredX = overlay.kind === "dialogue"
       ? overlay.x + Math.max(5, (overlay.width - lineWidth) / 2)
       : overlay.x + 10;
-    page.drawText(line, {
+    drawAuthoredText(page, line, {
       x: centeredX,
       y: firstBaseline - index * fitted.lineHeight,
       font,
@@ -219,14 +260,14 @@ export async function renderComicPdf(
       10,
       7,
     );
-    page.drawText(layout.title, {
+    drawAuthoredText(page, layout.title, {
       x: PDF_PAGE.margin,
       y: PDF_PAGE.height - PDF_PAGE.margin - titleSize,
       font: bold,
       size: titleSize,
       color: rgb(.12, .12, .12),
     });
-    page.drawText(layout.byline, {
+    drawAuthoredText(page, layout.byline, {
       x: PDF_PAGE.margin,
       y: PDF_PAGE.height - PDF_PAGE.margin - titleSize - 18,
       font,
@@ -249,10 +290,10 @@ export async function renderComicPdf(
         borderColor: rgb(.12, .12, .12),
       });
       page.drawImage(image, {
-        x: panel.x + 2,
-        y: panel.y + 2,
-        width: panel.width - 4,
-        height: panel.height - 4,
+        x: panel.artBox.x,
+        y: panel.artBox.y,
+        width: panel.artBox.width,
+        height: panel.artBox.height,
       });
       panel.overlays.forEach((overlay) => drawOverlay(page, overlay, bold));
     }

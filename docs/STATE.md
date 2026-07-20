@@ -51,22 +51,28 @@ browser, and rendered-document verification.
   regular files, and PNG shape.
 - Task 7 provides a read-only Premiere with ordered four-panel pages, title,
   author credit, exact overlays, approved-only artwork, honest missing-art
-  placeholders, and a normal local PDF download.
+  placeholders, and a progressively enhanced local PDF download that retains a
+  normal `href` and `download` fallback.
 - PDF export validates every approved project member through the contained asset
-  resolver, preserves square artwork without stretching, keeps normalized text
-  geometry, and fails with safe recoverable JSON instead of returning a partial
-  document when approval, assets, glyphs, or legible text fit are invalid.
-- Task 7 deterministic verification passes typecheck, 173/173 tests, production
+  resolver, uses one inset art box for both square artwork and normalized text
+  geometry, preserves authored ASCII spacing in drawing and extraction, and
+  fails with safe recoverable JSON instead of returning a partial document when
+  approval, assets, glyphs, or legible text fit are invalid.
+- Task 7 deterministic verification passes typecheck, 184/184 tests, production
   build, and diff check. It includes two-page panels 5–8, candidate exclusion,
-  curly-apostrophe preservation, unsupported-glyph rejection, and long-word
-  overflow rejection without a live or paid OpenAI request.
+  repeated-space preservation, curly-apostrophe preservation, unsupported-glyph
+  rejection, asset-failure classification, validated browser downloads, and
+  request/project/API/mount lifecycle guards without a live or paid OpenAI request.
 - The in-app browser runtime exposed no available browser, so manual fallback QA
   used system Chrome. At 1440x900 and 1024x768 the Premiere matches the accepted
   landscape 2x2 composition; at 390x844 it becomes a coherent one-column comic.
   All three widths had no horizontal overflow, and the preview had no textareas.
-- A no-key sample download rendered cleanly as one US Letter page with Poppler;
-  text extraction preserved all four exact overlays. A separate eight-panel
-  document rendered panels 5–8 cleanly on page 2 of 2.
+- A no-key sample download rendered cleanly as one US Letter page with Poppler.
+  A correction proof preserved leading, repeated, and trailing ASCII spaces in
+  raw extraction where line wrapping permits representation. Chrome also showed
+  the recoverable asset-error notice without creating a file, then completed a
+  restored successful download. A separate eight-panel document rendered panels
+  5–8 cleanly on page 2 of 2.
 
 ## Active decisions
 

@@ -5,6 +5,16 @@ import { PdfExportError } from "../export/export-error";
 import { renderComicPdf } from "../export/pdf-renderer";
 import type { ProjectStore } from "../storage/project-store";
 
+const validProjectId = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,127}$/;
+
+class InvalidExportProjectIdError extends Error {
+  readonly code = "invalid_export_project_id";
+}
+
+function assertValidProjectId(value: string): void {
+  if (!validProjectId.test(value)) throw new InvalidExportProjectIdError();
+}
+
 function safeFilename(value: string): string {
   return value
     .normalize("NFKD")
@@ -22,7 +32,7 @@ function sourceCode(error: unknown): string | undefined {
 
 function fail(response: Response, error: unknown): void {
   const code = sourceCode(error);
-  const invalidId = code === "invalid_path";
+  const invalidId = code === "invalid_export_project_id";
   const missingProject = code === "not_found";
   const knownExport = error instanceof PdfExportError;
   response
@@ -63,6 +73,7 @@ export function createExportRouter(store: ProjectStore) {
 
   router.get("/projects/:id/export.pdf", async (request, response) => {
     try {
+      assertValidProjectId(request.params.id);
       const project = await store.load(request.params.id);
       const bytes = await renderComicPdf(
         project,

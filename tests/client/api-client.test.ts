@@ -76,4 +76,91 @@ describe("ComicApiClient", () => {
     expect(String(error)).not.toContain("sk-secret-value");
     expect((error as ComicApiError).payload.code).toBe("network");
   });
+
+  it("downloads only a validated PDF response with a safe server filename", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      new Uint8Array([37, 80, 68, 70, 45]),
+      {
+        status: 200,
+        headers: {
+          "content-type": "application/pdf",
+          "content-disposition": 'attachment; filename="Nova-Moon-Kite.pdf"',
+        },
+      },
+    )));
+
+    const result = await new ComicApiClient().downloadPdf("project/id");
+
+    expect(result.filename).toBe("Nova-Moon-Kite.pdf");
+    expect(result.blob).toBeInstanceOf(Blob);
+    expect(result.blob.type).toBe("application/pdf");
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/projects/project%2Fid/export.pdf",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("uses a deterministic filename when a PDF disposition is not safe", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      new Uint8Array([37, 80, 68, 70, 45]),
+      {
+        status: 200,
+        headers: {
+          "content-type": "application/pdf",
+          "content-disposition": 'attachment; filename="../../unsafe.pdf"',
+        },
+      },
+    )));
+
+    await expect(new ComicApiClient().downloadPdf("project")).resolves
+      .toMatchObject({ filename: "comic.pdf" });
+  });
+
+  it("decodes a safe JSON export error instead of treating it as a file", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({
+        error: {
+          code: "export",
+          message: "Approve artwork for every panel before downloading the PDF.",
+          retryable: true,
+        },
+      }),
+      {
+        status: 409,
+        headers: { "content-type": "application/json" },
+      },
+    )));
+
+    const error = await new ComicApiClient().downloadPdf("project")
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ComicApiError);
+    expect((error as ComicApiError).payload).toEqual({
+      code: "export",
+      message: "Approve artwork for every panel before downloading the PDF.",
+      retryable: true,
+    });
+  });
+
+  it("rejects a 200 response that is not a validated PDF download", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      "<html>not a pdf</html>",
+      {
+        status: 200,
+        headers: {
+          "content-type": "text/html",
+          "content-disposition": 'attachment; filename="not-safe.html"',
+        },
+      },
+    )));
+
+    const error = await new ComicApiClient().downloadPdf("project")
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ComicApiError);
+    expect((error as ComicApiError).payload).toMatchObject({
+      code: "network",
+      retryable: true,
+    });
+  });
 });

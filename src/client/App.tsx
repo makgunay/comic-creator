@@ -88,6 +88,7 @@ function ProjectWorkshop({
       {step === "premiere" ? (
         <ComicPreview
           project={project}
+          api={api}
           imageUrl={(_panelId, imageId) => api.imageUrl(project.id, imageId)}
           exportUrl={api.exportUrl(project.id)}
           onBackToPanels={() => setStep("panels")}

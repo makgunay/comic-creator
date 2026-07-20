@@ -1076,6 +1076,21 @@ svg {
   text-decoration: none;
 }
 
+.premiere-download-notice {
+  margin: -8px 2px 0;
+  font-size: .88rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.premiere-download-success {
+  color: var(--green);
+}
+
+.premiere-download-error {
+  color: #9b2f22;
+}
+
 .comic-pages {
   display: grid;
   min-width: 0;

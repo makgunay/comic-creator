@@ -15,6 +15,10 @@ export function makeClientApi(project: Project, overrides: Partial<ComicApi> = {
     generatePanel: vi.fn().mockResolvedValue({ project }),
     approvePanelVersion: vi.fn().mockResolvedValue({ project }),
     rejectPanelCandidate: vi.fn().mockResolvedValue({ project }),
+    downloadPdf: vi.fn().mockResolvedValue({
+      blob: new Blob(["%PDF-"], { type: "application/pdf" }),
+      filename: "comic.pdf",
+    }),
     imageUrl: vi.fn((projectId, imageId) => `/api/projects/${projectId}/images/${imageId}`),
     exportUrl: vi.fn((projectId) => `/api/projects/${projectId}/export.pdf`),
     ...overrides,

@@ -2,7 +2,10 @@ import { PDFDocument } from "pdf-lib";
 import { describe, expect, it, vi } from "vitest";
 import type { Project } from "../../src/domain/project";
 import { buildPdfLayout } from "../../src/server/export/pdf-layout";
-import { renderComicPdf } from "../../src/server/export/pdf-renderer";
+import {
+  renderComicPdf,
+  wrapPdfParagraph,
+} from "../../src/server/export/pdf-renderer";
 import {
   makeEightPanelProject,
   makeImageVersion,
@@ -41,12 +44,42 @@ describe("PDF layout and rendering", () => {
 
     expect(command.text).toBe("We made our own moonlight.");
     expect(panel.width).toBe(panel.height);
-    expect(command.x).toBeCloseTo(panel.x + overlay.x * panel.width);
+    expect(panel.artBox).toEqual({
+      x: panel.x + 2,
+      y: panel.y + 2,
+      width: panel.width - 4,
+      height: panel.height - 4,
+    });
+    expect(command.x).toBeCloseTo(panel.artBox.x + overlay.x * panel.artBox.width);
     expect(command.y).toBeCloseTo(
-      panel.y + panel.height - (overlay.y + overlay.height) * panel.height,
+      panel.artBox.y
+        + panel.artBox.height
+        - (overlay.y + overlay.height) * panel.artBox.height,
     );
-    expect(command.width).toBeCloseTo(overlay.width * panel.width);
-    expect(command.height).toBeCloseTo(overlay.height * panel.height);
+    expect(command.width).toBeCloseTo(overlay.width * panel.artBox.width);
+    expect(command.height).toBeCloseTo(overlay.height * panel.artBox.height);
+  });
+
+  it("preserves leading, repeated, and trailing ASCII spaces across soft wraps", () => {
+    const authored = "  Two  spaces and trailing  ";
+    const lines = wrapPdfParagraph(authored, (value) => value.length, 9);
+
+    expect(lines).toBeDefined();
+    expect(lines!.join("")).toBe(authored);
+    expect(lines![0]).toMatch(/^ {2}/);
+    expect(lines!.join("")).toMatch(/Two {2}spaces/);
+    expect(lines!.at(-1)).toMatch(/ {2}$/);
+  });
+
+  it("renders authored repeated spaces without changing the layout command", async () => {
+    const authored = "  Two  spaces and trailing  ";
+    const project = withApprovedPanels(makeProjectWithDialogue(authored));
+
+    const bytes = await renderComicPdf(project, async () => fixturePng());
+
+    expect(Buffer.from(bytes).subarray(0, 5).toString()).toBe("%PDF-");
+    expect(buildPdfLayout(project)[0]!.panels[0]!.overlays[0]!.text)
+      .toBe(authored);
   });
 
   it("emits two PDF pages for eight ordered panels and resolves only approved versions", async () => {

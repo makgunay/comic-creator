@@ -1,12 +1,24 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  ComicApiError,
+  type PdfDownload,
+} from "../../src/client/api/client";
 import { ComicPreview } from "../../src/client/features/comic/ComicPreview";
+import type { Project } from "../../src/domain/project";
+import { makeClientApi } from "../fixtures/client-api-fixtures";
+import { deferred } from "../fixtures/generation-fixtures";
 import {
   makeEightPanelProject,
   makeImageVersion,
   makeProjectWithDialogue,
 } from "../fixtures/project-fixtures";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("ComicPreview", () => {
   it("renders panels five through eight on a second numbered page", () => {
@@ -15,6 +27,7 @@ describe("ComicPreview", () => {
     render(
       <ComicPreview
         project={project}
+        api={makeClientApi(project)}
         imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
         exportUrl="/api/projects/test/export.pdf"
         onBackToPanels={vi.fn()}
@@ -46,6 +59,7 @@ describe("ComicPreview", () => {
     render(
       <ComicPreview
         project={project}
+        api={makeClientApi(project)}
         imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
         exportUrl="/api/projects/test/export.pdf"
         onBackToPanels={vi.fn()}
@@ -79,6 +93,7 @@ describe("ComicPreview", () => {
     render(
       <ComicPreview
         project={project}
+        api={makeClientApi(project)}
         imageUrl={imageUrl}
         exportUrl="/api/projects/test/export.pdf"
         onBackToPanels={vi.fn()}
@@ -101,6 +116,7 @@ describe("ComicPreview", () => {
     render(
       <ComicPreview
         project={makeProjectWithDialogue("Exact words")}
+        api={makeClientApi(makeProjectWithDialogue("Exact words"))}
         imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
         exportUrl="/api/projects/project%2Fid/export.pdf"
         onBackToPanels={onBackToPanels}
@@ -114,5 +130,154 @@ describe("ComicPreview", () => {
     expect(screen.getByRole("link", { name: "Download PDF" })).toHaveAttribute("download");
     await user.click(screen.getByRole("button", { name: "Back to panels" }));
     expect(onBackToPanels).toHaveBeenCalledOnce();
+  });
+
+  it("shows a safe visible export error and creates no file on a 409", async () => {
+    const project = makeProjectWithDialogue("Exact words");
+    const api = makeClientApi(project, {
+      downloadPdf: vi.fn().mockRejectedValue(new ComicApiError({
+        code: "export",
+        message: "Approve artwork for every panel before downloading the PDF.",
+        retryable: true,
+      })),
+    });
+    const createObjectURL = vi.fn();
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+    const user = userEvent.setup();
+
+    render(
+      <ComicPreview
+        project={project}
+        api={api}
+        imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
+        exportUrl="/api/projects/test/export.pdf"
+        onBackToPanels={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("link", { name: "Download PDF" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Approve artwork for every panel before downloading the PDF.",
+    );
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+  });
+
+  it("creates and revokes a successful PDF object URL after the server responds", async () => {
+    const project = makeProjectWithDialogue("Exact words");
+    const download: PdfDownload = {
+      blob: new Blob(["%PDF-"], { type: "application/pdf" }),
+      filename: "Test-Comic.pdf",
+    };
+    const downloadPdf = vi.fn().mockResolvedValue(download);
+    const api = makeClientApi(project, { downloadPdf });
+    const createObjectURL = vi.fn(() => "blob:comic-pdf");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    const user = userEvent.setup();
+
+    render(
+      <ComicPreview
+        project={project}
+        api={api}
+        imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
+        exportUrl="/api/projects/test/export.pdf"
+        onBackToPanels={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("link", { name: "Download PDF" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Your PDF download is ready.",
+    );
+    expect(downloadPdf).toHaveBeenCalledWith(
+      project.id,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(createObjectURL).toHaveBeenCalledWith(download.blob);
+    expect(anchorClick).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:comic-pdf");
+  });
+
+  it("ignores a stale PDF response after the project and API change", async () => {
+    const firstProject = makeProjectWithDialogue("First");
+    const secondProject = structuredClone(firstProject);
+    secondProject.id = "second-project";
+    const pending = deferred<PdfDownload>();
+    const firstApi = makeClientApi(firstProject, {
+      downloadPdf: vi.fn().mockReturnValue(pending.promise),
+    });
+    const secondApi = makeClientApi(secondProject);
+    const createObjectURL = vi.fn(() => "blob:stale");
+    vi.stubGlobal("URL", {
+      createObjectURL,
+      revokeObjectURL: vi.fn(),
+    });
+    const user = userEvent.setup();
+    const view = render(
+      <ComicPreview
+        project={firstProject}
+        api={firstApi}
+        imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
+        exportUrl="/api/projects/first/export.pdf"
+        onBackToPanels={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("link", { name: "Download PDF" }));
+    expect(firstApi.downloadPdf).toHaveBeenCalledOnce();
+    view.rerender(
+      <ComicPreview
+        project={secondProject as Project}
+        api={secondApi}
+        imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
+        exportUrl="/api/projects/second/export.pdf"
+        onBackToPanels={vi.fn()}
+      />,
+    );
+    await act(async () => pending.resolve({
+      blob: new Blob(["%PDF-"], { type: "application/pdf" }),
+      filename: "First.pdf",
+    }));
+
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(screen.queryByText("Your PDF download is ready.")).not.toBeInTheDocument();
+  });
+
+  it("does not create a download or notice after unmount", async () => {
+    const project = makeProjectWithDialogue("Exact words");
+    const pending = deferred<PdfDownload>();
+    const api = makeClientApi(project, {
+      downloadPdf: vi.fn().mockReturnValue(pending.promise),
+    });
+    const createObjectURL = vi.fn(() => "blob:unmounted");
+    vi.stubGlobal("URL", {
+      createObjectURL,
+      revokeObjectURL: vi.fn(),
+    });
+    const view = render(
+      <ComicPreview
+        project={project}
+        api={api}
+        imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
+        exportUrl="/api/projects/test/export.pdf"
+        onBackToPanels={vi.fn()}
+      />,
+    );
+
+    screen.getByRole("link", { name: "Download PDF" }).click();
+    expect(api.downloadPdf).toHaveBeenCalledOnce();
+    view.unmount();
+    await act(async () => pending.resolve({
+      blob: new Blob(["%PDF-"], { type: "application/pdf" }),
+      filename: "Test.pdf",
+    }));
+
+    expect(createObjectURL).not.toHaveBeenCalled();
   });
 });
