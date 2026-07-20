@@ -51,6 +51,8 @@ early feasibility gate.
 
 ### 3. Build and validate the MVP — active
 
+- [x] Close the final specification gaps in hero visual compilation and
+  metadata-only provider model diagnostics.
 - [x] Complete Task 6 generation, approval, exact-overlay, and panel-workshop scope.
 - [x] Complete Task 7 read-only Premiere, pagination, approved-only PDF export,
   guarded progressive download UX, deterministic tests, responsive browser QA,

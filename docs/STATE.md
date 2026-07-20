@@ -22,7 +22,12 @@ complete.
 - Deterministic proof: `npm run verify` covers the shared domain, storage,
   provider contracts/errors, server routes, client lifecycle behavior, the
   mocked full journey, multi-page pagination, and PDF rendering. The final
-  correction count is 34 files and 224 tests.
+  correction count is 34 files and 225 tests.
+- Hero generation now follows the approved authorship boundary: strict visual
+  facts are moderated, compiled to validated rendering choices, and converted
+  to an art-only prompt before image generation. OpenAI completion and failure
+  diagnostics identify the exact configured model while remaining
+  metadata-only.
 - Local boundary proof rejects hostile Host/Origin and cross-site browser
   requests before API routes, requires JSON for writes, preserves safe `413`
   responses, and keeps route identifiers and image membership contained.

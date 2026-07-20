@@ -258,13 +258,75 @@ describe("GenerationService", () => {
     project.title = "TITLE SENTINEL";
     project.localAuthorCredit = "CREDIT SENTINEL";
     project.beats[0]!.childText = "STORY SENTINEL";
+    project.panels[0]!.action = "ACTION SENTINEL";
+    project.panels[0]!.setting = "SETTING SENTINEL";
+    project.panels[0]!.overlays = [{
+      id: "overlay-sentinel",
+      kind: "dialogue",
+      text: "OVERLAY SENTINEL",
+      x: .05,
+      y: .05,
+      width: .45,
+      height: .2,
+    }];
     const { service, provider } = await createGenerationHarness(project);
+    const moderate = vi.spyOn(provider, "moderate");
+    const chooseRendering = vi.spyOn(provider, "chooseRendering");
+    const generateHero = vi.spyOn(provider, "generateHero");
 
     await service.generateHero(project.id);
 
+    expect(moderate).toHaveBeenCalledTimes(1);
+    expect(chooseRendering).toHaveBeenCalledWith({
+      heroDescription: project.hero.childDescription,
+      action: "",
+      setting: "",
+      mood: "",
+      framing: "full-body character reference",
+      styleNotes: project.visualStyle.editedNotes,
+      revisionDirection: "",
+    });
+    expect(moderate.mock.invocationCallOrder[0]).toBeLessThan(
+      chooseRendering.mock.invocationCallOrder[0]!,
+    );
+    expect(chooseRendering.mock.invocationCallOrder[0]).toBeLessThan(
+      generateHero.mock.invocationCallOrder[0]!,
+    );
     const recorded = [...provider.moderations, ...provider.heroPrompts].join("\n");
-    expect(recorded).toContain(project.hero.childDescription);
-    expect(recorded).not.toMatch(/TITLE SENTINEL|CREDIT SENTINEL|STORY SENTINEL/);
+    expect(provider.heroPrompts[0]!.split(project.hero.childDescription)).toHaveLength(2);
+    expect(provider.heroPrompts[0]!.split(project.visualStyle.editedNotes)).toHaveLength(2);
+    expect(provider.heroPrompts[0]).toContain(
+      "wide shot, eye_level angle, moonlit lighting, cool palette, focus on action.",
+    );
+    expect(provider.heroPrompts[0]).toContain(
+      "No text, letters, speech bubbles, logos, watermarks, extra characters, plot events, or story settings.",
+    );
+    expect(recorded).not.toMatch(
+      /TITLE SENTINEL|CREDIT SENTINEL|STORY SENTINEL|ACTION SENTINEL|SETTING SENTINEL|OVERLAY SENTINEL/,
+    );
+  });
+
+  it("does not call the hero image provider or publish a candidate when compiler output is invalid", async () => {
+    const project = makeProjectWithApprovedPanel();
+    const { service, provider, store } = await createGenerationHarness(project);
+    const originalVersions = structuredClone(project.hero.imageVersions);
+    vi.spyOn(provider, "chooseRendering").mockResolvedValueOnce({
+      shotSize: "wide",
+      cameraAngle: "eye_level",
+      lighting: "moonlit",
+      palette: "cool",
+      focus: "action",
+      plotAddition: "A dragon arrives",
+    } as never);
+    const generateHero = vi.spyOn(provider, "generateHero");
+
+    await expect(service.generateHero(project.id)).rejects.toThrow();
+
+    expect(generateHero).not.toHaveBeenCalled();
+    expect((await store.load(project.id)).hero.imageVersions).toEqual(originalVersions);
+
+    await expect(service.generateHero(project.id)).resolves.toMatchObject({ id: project.id });
+    expect(generateHero).toHaveBeenCalledTimes(1);
   });
 
   it("rejects non-PNG output and quarantines an orphan if project mutation fails after publish", async () => {

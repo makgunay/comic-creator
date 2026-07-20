@@ -22,6 +22,7 @@ type ProviderOperation =
 interface ProviderLogEntry {
   event: "openai_request_complete" | "openai_request_failed";
   operation: ProviderOperation;
+  model: string;
   durationMs: number;
   providerRequestId?: string;
 }
@@ -235,6 +236,7 @@ export class OpenAIGenerationProvider implements GenerationProvider {
     this.log({
       event: "openai_request_complete",
       operation,
+      model: this.modelFor(operation),
       durationMs,
       ...(providerRequestId ? { providerRequestId } : {}),
     });
@@ -251,8 +253,15 @@ export class OpenAIGenerationProvider implements GenerationProvider {
     this.log({
       event: "openai_request_failed",
       operation,
+      model: this.modelFor(operation),
       durationMs: Math.round(performance.now() - started),
       ...(providerRequestId ? { providerRequestId } : {}),
     });
+  }
+
+  private modelFor(operation: ProviderOperation): string {
+    if (operation === "moderate") return this.config.OPENAI_MODERATION_MODEL;
+    if (operation === "choose_rendering") return this.config.OPENAI_TEXT_MODEL;
+    return this.config.OPENAI_IMAGE_MODEL;
   }
 }

@@ -21,3 +21,16 @@ export function buildImagePrompt(
     .filter(Boolean)
     .join("\n");
 }
+
+export function buildHeroImagePrompt(
+  input: VisualInput,
+  choices: RenderingChoices,
+): string {
+  return [
+    "Create one square full-body comic character reference on a plain pale background.",
+    `Child-authored hero, preserve exactly: ${input.heroDescription}`,
+    `Editable art style, preserve exactly: ${input.styleNotes}`,
+    `${choices.shotSize} shot, ${choices.cameraAngle} angle, ${choices.lighting} lighting, ${choices.palette} palette, focus on ${choices.focus}.`,
+    "No text, letters, speech bubbles, logos, watermarks, extra characters, plot events, or story settings.",
+  ].join("\n");
+}

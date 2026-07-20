@@ -211,23 +211,38 @@ describe("OpenAIGenerationProvider", () => {
     expect(uploadedMetadata).toMatchObject({ width: 384, height: 384 });
   });
 
-  it("logs only safe operation metadata", async () => {
+  it("logs the configured model for every successful operation using only safe metadata", async () => {
+    const referencePath = await createReferenceImage();
     const log = vi.fn();
     const provider = new OpenAIGenerationProvider(config, {
       client: createClient(),
       log,
     });
 
+    await provider.moderate("private moderation content");
     await provider.chooseRendering(input);
     await provider.generateHero("private child-authored prompt");
+    await provider.generatePanel(referencePath, "private panel prompt");
+
+    expect(log.mock.calls.map(([entry]) => entry)).toEqual([
+      expect.objectContaining({ operation: "moderate", model: "omni-moderation-latest" }),
+      expect.objectContaining({ operation: "choose_rendering", model: "gpt-5.6-luna" }),
+      expect.objectContaining({ operation: "generate_hero", model: "gpt-image-2" }),
+      expect.objectContaining({ operation: "generate_panel", model: "gpt-image-2" }),
+    ]);
 
     const logs = JSON.stringify(log.mock.calls);
+    expect(logs).toContain("req_moderation");
     expect(logs).toContain("req_rendering");
     expect(logs).toContain("req_hero");
+    expect(logs).toContain("req_panel");
     expect(logs).toContain("durationMs");
+    expect(logs).not.toContain("private moderation content");
     expect(logs).not.toContain("private child-authored prompt");
+    expect(logs).not.toContain("private panel prompt");
     expect(logs).not.toContain(input.action);
     expect(logs).not.toContain(input.heroDescription);
+    expect(logs).not.toContain("test-key");
   });
 
   it("logs safe failure metadata for moderation, compiler, and both image calls", async () => {
@@ -308,6 +323,11 @@ describe("OpenAIGenerationProvider", () => {
       expect(log).toHaveBeenCalledWith({
         event: "openai_request_failed",
         operation: failureCase.operation,
+        model: failureCase.operation === "moderate"
+          ? "omni-moderation-latest"
+          : failureCase.operation === "choose_rendering"
+            ? "gpt-5.6-luna"
+            : "gpt-image-2",
         durationMs: expect.any(Number),
         providerRequestId: failureCase.requestId,
       });

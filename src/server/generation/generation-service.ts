@@ -9,12 +9,13 @@ import {
 } from "../../domain/project";
 import { ProjectStore } from "../storage/project-store";
 import {
+  RenderingChoicesSchema,
   VisualInputSchema,
   type GeneratedImage,
   type GenerationProvider,
   type VisualInput,
 } from "./contracts";
-import { buildImagePrompt } from "./prompt-builder";
+import { buildHeroImagePrompt, buildImagePrompt } from "./prompt-builder";
 
 function codedError(code: string, message: string): Error & { code: string } {
   return Object.assign(new Error(message), { code });
@@ -205,12 +206,12 @@ export class GenerationService {
         heroFacts.heroDescription,
         heroFacts.styleNotes,
       ].join("\n"));
-      const generated = await this.provider.generateHero([
-        "Create one square full-body comic character reference on a plain pale background.",
-        `Child-authored hero, preserve exactly: ${heroFacts.heroDescription}`,
-        `Art style: ${heroFacts.styleNotes}`,
-        "No text, letters, speech bubbles, logo, watermark, new character, plot event, or story setting.",
-      ].join("\n"));
+      const choices = RenderingChoicesSchema.parse(
+        await this.provider.chooseRendering(heroFacts),
+      );
+      const generated = await this.provider.generateHero(
+        buildHeroImagePrompt(heroFacts, choices),
+      );
       return this.publishAndMutate(projectId, generated, (latest, imageId) => ({
         ...latest,
         hero: {
