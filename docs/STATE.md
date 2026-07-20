@@ -58,16 +58,16 @@ Begin Task 5 now that Task 4 passes deterministic verification.
 - The injected server factory now exposes public config plus create, load,
   update, and sample-copy routes. Strict create-input and body-parser failures
   return non-retryable product-safe client errors with no secret values.
-- The tracked “Nova and the Moon Kite” sample contains four deterministic
-  1024×1024 PNG panels and the four exact local dialogue overlays. The build
-  script validates temporary dimensions and hashes before atomic replacement;
+- The tracked sample has four deterministic 1024×1024 PNGs and exact dialogue.
+  The build validates temporary dimensions and hashes before atomic replacement;
   invalid temporary outputs move to recovery quarantine.
-- Sample copy accepts only regular contained fixture files, stages the complete
-  project outside the live namespace, atomically publishes it, and quarantines
-  failures without orphan assets. It leaves tracked fixtures unchanged and
-  succeeds without an API key, network request, or generation-provider call.
-- Injected transaction failures preserve byte-identical current and previous
-  data; cleanup failures aggregate both errors and leave residue only in staging.
+- Sample copy accepts only contained regular fixtures, atomically publishes a
+  complete staged project, and quarantines failures without live orphan assets.
+  It leaves fixtures unchanged and needs no API key, network, or provider call.
+- Single-failure transaction paths preserve byte-identical current and previous.
+  On backup plus rollback failure, `AggregateError` exposes both causes; valid
+  v3 current/v1 previous remain, v2 is quarantined, and staging is empty. Stronger
+  pairing needs generation directories/atomic pointers beyond this local MVP.
 - Task 4 focused verification passes 50/50 tests. Full `npm run verify` passes
   strict typechecking, 78/78 deterministic tests, and the production build.
   No paid or live OpenAI request was made for Task 4.
