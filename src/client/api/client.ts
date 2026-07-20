@@ -34,6 +34,7 @@ const ApiErrorResponseSchema = z.strictObject({
 });
 
 export type PublicConfig = z.infer<typeof ConfigResponseSchema>;
+export type GenerationConfigStatus = "loading" | "enabled" | "disabled" | "error";
 
 export interface RequestOptions {
   signal?: AbortSignal;

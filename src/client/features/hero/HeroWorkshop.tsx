@@ -1,4 +1,5 @@
 import type { Project } from "../../../domain/project";
+import type { GenerationConfigStatus } from "../../api/client";
 
 const sampleArtwork = new URL(
   "../../../../sample-assets/moon-kite/images/panel-1.png",
@@ -16,22 +17,28 @@ function PencilIcon() {
 
 export function HeroWorkshop({
   project,
-  generationEnabled,
+  configStatus,
   onChange,
 }: {
   project: Project;
-  generationEnabled: boolean;
+  configStatus: GenerationConfigStatus;
   onChange: (project: Project) => void;
 }) {
   const updateDescription = (childDescription: string) => onChange({
     ...project,
     hero: { ...project.hero, childDescription },
   });
+  const drawingStatus = {
+    loading: "Checking the art studio. Your description still saves.",
+    enabled: "Your description saves now. The art studio opens next.",
+    disabled: "Your description saves in Sample mode. Drawing stays off.",
+    error: "Your description still saves. The art studio could not be checked.",
+  }[configStatus];
 
   return (
     <section className="screen-section hero-screen" aria-labelledby="hero-title">
       <div className="hero-form-panel">
-        <h1 id="hero-title">Create your hero</h1>
+        <h1 id="hero-title" tabIndex={-1}>Create your hero</h1>
         <p>Describe the character only you can imagine.</p>
         <label htmlFor="hero-description">What does your hero look like?</label>
         <textarea
@@ -44,11 +51,13 @@ export function HeroWorkshop({
         <button
           className="button button-primary draw-button"
           type="button"
-          disabled={!generationEnabled || !project.hero.childDescription.trim()}
+          disabled
+          aria-describedby="hero-drawing-status"
         >
           <PencilIcon />
           Draw my hero
         </button>
+        <p className="drawing-status" id="hero-drawing-status">{drawingStatus}</p>
       </div>
       <figure className="hero-art-panel">
         <div className="hero-art-frame">

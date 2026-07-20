@@ -136,6 +136,11 @@ The child writes every beat. Each beat starts with one panel and may gain
 additional panels. Beats describe narrative structure; panels describe visual
 moments; pages are derived presentation. These are separate data concepts.
 
+The accepted story reference is authoritative for this setup screen: all four
+beat cards appear in one row on wide desktop viewports, two columns from 761 px
+through 1099 px, and one column at 760 px and below. This is responsive
+presentation only. It does not cap the number of panels that a beat may gain.
+
 ### 5. Direct each panel
 
 The workshop focuses on one panel at a time. A panel contains:

@@ -34,7 +34,7 @@ export function StorySpine({
   return (
     <section className="screen-section story-screen" aria-labelledby="story-title">
       <header className="screen-heading">
-        <h1 id="story-title">Build your story</h1>
+        <h1 id="story-title" tabIndex={-1}>Build your story</h1>
         <p>You write the four moments. Your illustrator follows your lead.</p>
       </header>
       <div className="story-line" aria-hidden="true">

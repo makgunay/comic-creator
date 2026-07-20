@@ -40,7 +40,7 @@ export function StylePicker({
   return (
     <section className="screen-section style-screen" aria-labelledby="style-title">
       <header className="screen-heading">
-        <h1 id="style-title">Choose your comic’s look</h1>
+        <h1 id="style-title" tabIndex={-1}>Choose your comic’s look</h1>
         <p>Pick a starting style, then make the art direction your own.</p>
       </header>
       <div className="style-choice-grid">

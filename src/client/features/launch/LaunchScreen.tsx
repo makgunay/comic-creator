@@ -1,6 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Project } from "../../../domain/project";
-import { ComicApiError, type ComicApi } from "../../api/client";
+import {
+  ComicApiError,
+  type ComicApi,
+  type GenerationConfigStatus,
+} from "../../api/client";
 import { StatusNotice } from "../../components/StatusNotice";
 
 const sampleArtwork = new URL(
@@ -11,44 +15,71 @@ const sampleArtwork = new URL(
 export function LaunchScreen({
   api,
   onOpenProject,
-  generationEnabled = true,
+  configStatus = "enabled",
 }: {
   api: ComicApi;
   onOpenProject: (project: Project) => void;
-  generationEnabled?: boolean;
+  configStatus?: GenerationConfigStatus;
 }) {
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [busy, setBusy] = useState<"create" | "sample">();
   const [error, setError] = useState<string>();
+  const mounted = useRef(true);
+  const requestId = useRef(0);
+  const onOpenProjectRef = useRef(onOpenProject);
+  onOpenProjectRef.current = onOpenProject;
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      requestId.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    requestId.current += 1;
+    setBusy(undefined);
+    setError(undefined);
+  }, [api]);
+
+  const runRequest = async (
+    kind: "create" | "sample",
+    request: () => Promise<Project>,
+    fallback: string,
+  ) => {
+    const activeRequest = requestId.current + 1;
+    requestId.current = activeRequest;
+    setBusy(kind);
+    setError(undefined);
+    try {
+      const project = await request();
+      if (!mounted.current || requestId.current !== activeRequest) return;
+      setBusy(undefined);
+      onOpenProjectRef.current(project);
+    } catch (caught) {
+      if (!mounted.current || requestId.current !== activeRequest) return;
+      setBusy(undefined);
+      setError(caught instanceof ComicApiError ? caught.message : fallback);
+    }
+  };
 
   const create = async (event: FormEvent) => {
     event.preventDefault();
     if (!title.trim()) return;
-    setBusy("create");
-    setError(undefined);
-    try {
-      onOpenProject(await api.createProject({
+    await runRequest(
+      "create",
+      () => api.createProject({
         title: title.trim(),
         localAuthorCredit: author.trim(),
-      }));
-    } catch (caught) {
-      setError(caught instanceof ComicApiError ? caught.message : "The comic could not be started.");
-    } finally {
-      setBusy(undefined);
-    }
+      }),
+      "The comic could not be started.",
+    );
   };
 
   const openSample = async () => {
-    setBusy("sample");
-    setError(undefined);
-    try {
-      onOpenProject(await api.copySample());
-    } catch (caught) {
-      setError(caught instanceof ComicApiError ? caught.message : "The sample could not be opened.");
-    } finally {
-      setBusy(undefined);
-    }
+    await runRequest("sample", () => api.copySample(), "The sample could not be opened.");
   };
 
   return (
@@ -57,9 +88,19 @@ export function LaunchScreen({
         <span className="brand-name">Comic Creator</span>
         <p>Write the story. Direct the art. Make a comic that is yours.</p>
       </header>
-      {!generationEnabled ? (
+      {configStatus === "loading" ? (
+        <StatusNotice title="Checking the art studio">
+          You can start writing while drawing availability is checked.
+        </StatusNotice>
+      ) : null}
+      {configStatus === "disabled" ? (
         <StatusNotice title="Sample mode">
           You can write and explore locally. Drawing controls stay off.
+        </StatusNotice>
+      ) : null}
+      {configStatus === "error" ? (
+        <StatusNotice title="Local mode" tone="error">
+          Configuration could not be checked, so drawing stays off for now.
         </StatusNotice>
       ) : null}
       {error ? <StatusNotice title="Try again" tone="error">{error}</StatusNotice> : null}

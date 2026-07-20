@@ -1768,14 +1768,17 @@ export function StorySpine({ project, onChange }: { project: Project; onChange: 
 - `Start a new comic` asks for title and optional local author credit, then calls `createProject`;
 - `Explore the sample` calls `copySample`.
 
-`HeroWorkshop` contains the hero description field and a disabled generation button when `generationEnabled` is false. It must not render the API key or an API-key input.
+`HeroWorkshop` contains the hero description field and keeps its generation
+button disabled until Task 6 wires the drawing workflow, including when the
+configuration endpoint reports generation as enabled. It must not render the
+API key or an API-key input.
 
 `AppFrame` shows:
 
 - current comic title;
 - step names `Hero`, `Style`, `Story`, `Panels`, `Premiere`;
 - save state; and
-- a persistent `Sample mode` notice when generation is disabled.
+- an honest configuration notice for loading, disabled, or error states.
 
 - [ ] **Step 6: Apply the approved responsive visual language**
 
@@ -1786,7 +1789,9 @@ Implement:
 - minimum interactive target 44×44 px;
 - thick 3 px ink borders;
 - card shadow `6px 6px 0 #202020`;
-- two-column beat grid above 760 px and one column below;
+- four beat cards in one row at 1100 px and above, two columns from 761 px
+  through 1099 px, and one column at 760 px and below, matching the accepted
+  story reference without imposing a domain panel cap;
 - no low-contrast gray text on dark surfaces;
 - `prefers-reduced-motion` removes progress and card transitions.
 

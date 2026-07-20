@@ -14,8 +14,8 @@ body {
   color: var(--ink);
   background-color: var(--paper);
   background-image:
-    radial-gradient(circle at 15% 20%, rgb(255 255 255 / 42%) 0 1px, transparent 2px),
-    radial-gradient(circle at 78% 64%, rgb(32 32 32 / 5%) 0 1px, transparent 2px);
+    radial-gradient(circle at 15% 20%, rgb(255 255 255 / 58%) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 64%, rgb(32 32 32 / 8%) 0 1px, transparent 2px);
   background-size: 21px 21px, 29px 29px;
   font-size: 16px;
   line-height: 1.5;
@@ -107,6 +107,11 @@ svg {
 .button-next {
   color: #fff;
   background: var(--violet);
+}
+
+.button-next-blue {
+  color: var(--ink);
+  background: var(--blue);
 }
 
 .button-secondary {
@@ -470,6 +475,11 @@ svg {
   padding: clamp(26px, 4vw, 40px);
 }
 
+.hero-form-panel h1 {
+  font-size: clamp(2.65rem, 4vw, 3.35rem);
+  white-space: nowrap;
+}
+
 .hero-form-panel textarea {
   min-height: 250px;
   margin-top: 8px;
@@ -479,6 +489,12 @@ svg {
 .draw-button {
   width: 100%;
   margin-top: 24px;
+}
+
+.drawing-status {
+  margin: 14px 2px 0;
+  font-size: .95rem;
+  font-weight: 700;
 }
 
 .hero-art-panel {
@@ -633,7 +649,7 @@ svg {
 
 .beat-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 24px;
 }
 
@@ -667,15 +683,15 @@ svg {
 
 .beat-header {
   display: grid;
-  grid-template-columns: 58px 1fr;
+  grid-template-columns: 50px 1fr;
   align-items: center;
   gap: 12px;
 }
 
 .beat-icon {
   display: grid;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   place-items: center;
   border: var(--border);
   border-radius: 50%;
@@ -683,8 +699,8 @@ svg {
 }
 
 .beat-icon svg {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   fill: none;
   stroke: var(--ink);
   stroke-width: 2;
@@ -699,12 +715,18 @@ svg {
 
 .beat-header strong {
   font-family: var(--display);
-  font-size: 1.3rem;
+  font-size: 1.2rem;
 }
 
 .beat-card textarea {
   min-height: 175px;
   flex: 1;
+}
+
+@media (max-width: 1099px) {
+  .beat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .loading-shell {
@@ -829,6 +851,10 @@ svg {
 
   .hero-form-panel textarea {
     min-height: 220px;
+  }
+
+  .hero-form-panel h1 {
+    white-space: normal;
   }
 
   .hero-art-frame {

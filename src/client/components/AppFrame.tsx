@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import type { GenerationConfigStatus } from "../api/client";
 import type { SaveState } from "../state/use-project";
 import { StatusNotice } from "./StatusNotice";
 
@@ -32,18 +33,24 @@ export function AppFrame({
   title,
   currentStep,
   saveState,
-  generationEnabled,
+  configStatus,
   onStepChange,
   children,
 }: {
   title: string;
   currentStep: WorkshopStep;
   saveState: SaveState;
-  generationEnabled: boolean;
+  configStatus: GenerationConfigStatus;
   onStepChange: (step: WorkshopStep) => void;
   children: ReactNode;
 }) {
   const currentIndex = steps.findIndex((step) => step.id === currentStep);
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    mainRef.current?.querySelector<HTMLElement>("h1")?.focus();
+  }, [currentStep]);
+
   return (
     <div className="app-frame">
       <header className="workshop-header">
@@ -82,12 +89,22 @@ export function AppFrame({
           <span>{saveLabels[saveState]}</span>
         </div>
       </header>
-      {!generationEnabled ? (
+      {configStatus === "disabled" ? (
         <StatusNotice title="Sample mode">
           Drawing is off, but your writing and local edits still save on this device.
         </StatusNotice>
       ) : null}
-      <main className="workshop-main">{children}</main>
+      {configStatus === "loading" ? (
+        <StatusNotice title="Checking the art studio">
+          Your writing still saves while drawing availability is checked.
+        </StatusNotice>
+      ) : null}
+      {configStatus === "error" ? (
+        <StatusNotice title="Drawing unavailable" tone="error">
+          Configuration could not be checked. Your writing and local edits still save.
+        </StatusNotice>
+      ) : null}
+      <main className="workshop-main" ref={mainRef}>{children}</main>
     </div>
   );
 }

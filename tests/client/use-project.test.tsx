@@ -114,6 +114,69 @@ describe("useProject", () => {
     );
   });
 
+  it("ignores a late old failure after the newer same-revision pagehide save succeeds", async () => {
+    const project = makeProject();
+    const oldAttempt = deferred<Project>();
+    const newestAttempt = deferred<Project>();
+    const saveProject = vi.fn()
+      .mockReturnValueOnce(oldAttempt.promise)
+      .mockReturnValueOnce(newestAttempt.promise);
+    render(<Harness projectId={project.id} api={makeApi(project, { saveProject })} />);
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "Latest edit" }));
+    await act(async () => vi.advanceTimersByTime(500));
+    await act(async () => window.dispatchEvent(new Event("pagehide")));
+    expect(saveProject).toHaveBeenCalledTimes(2);
+
+    await act(async () => newestAttempt.resolve({
+      ...project,
+      title: "Latest edit confirmed",
+    }));
+    expect(screen.getByLabelText("Project title")).toHaveTextContent("Latest edit confirmed");
+    expect(screen.getByLabelText("Save state")).toHaveTextContent("saved");
+
+    await act(async () => oldAttempt.reject(new Error("older request failed")));
+    expect(screen.getByLabelText("Project title")).toHaveTextContent("Latest edit confirmed");
+    expect(screen.getByLabelText("Save state")).toHaveTextContent("saved");
+  });
+
+  it("ignores a late old success after the newer same-revision pagehide save fails", async () => {
+    const project = makeProject();
+    const oldAttempt = deferred<Project>();
+    const newestAttempt = deferred<Project>();
+    const saveProject = vi.fn()
+      .mockReturnValueOnce(oldAttempt.promise)
+      .mockReturnValueOnce(newestAttempt.promise);
+    render(<Harness projectId={project.id} api={makeApi(project, { saveProject })} />);
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "Latest edit" }));
+    await act(async () => vi.advanceTimersByTime(500));
+    await act(async () => window.dispatchEvent(new Event("pagehide")));
+
+    await act(async () => newestAttempt.reject(new Error("newest request failed")));
+    expect(screen.getByLabelText("Project title")).toHaveTextContent("Latest edit");
+    expect(screen.getByLabelText("Save state")).toHaveTextContent("error");
+
+    await act(async () => oldAttempt.resolve({ ...project, title: "Old server copy" }));
+    expect(screen.getByLabelText("Project title")).toHaveTextContent("Latest edit");
+    expect(screen.getByLabelText("Save state")).toHaveTextContent("error");
+  });
+
+  it("keeps one stable pagehide listener while project state changes", async () => {
+    const project = makeProject();
+    const addEventListener = vi.spyOn(window, "addEventListener");
+    render(<Harness projectId={project.id} api={makeApi(project)} />);
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "First edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Latest edit" }));
+
+    const pagehideRegistrations = addEventListener.mock.calls
+      .filter(([eventName]) => eventName === "pagehide");
+    expect(pagehideRegistrations).toHaveLength(1);
+  });
+
   it("ignores obsolete loads and cancels the old project timer", async () => {
     const projectA = { ...makeProject(), id: "project-a", title: "Project A" };
     const projectB = { ...makeProject(), id: "project-b", title: "Project B" };

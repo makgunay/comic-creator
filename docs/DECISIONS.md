@@ -96,3 +96,17 @@ new entry that explicitly supersedes the earlier decision.
   recognizable reference continuity succeeds.
 - Consequence: The UI must present an honest drawing wait state, and generation
   performance remains observed rather than guaranteed.
+
+## D-008 — Make the accepted four-beat story layout authoritative
+
+- Date: 2026-07-20
+- Status: Accepted
+- Context: The accepted story reference shows the complete four-beat spine at
+  once on a wide desktop, while smaller screens still need readable controls.
+- Decision: Present exactly the four required beat cards in one row on wide
+  desktop viewports, two columns from 761 px through 1099 px, and one column at
+  760 px and below.
+- Rationale: Seeing setup, problem, big moment, and ending together makes the
+  narrative arc legible without causing horizontal overflow on mobile.
+- Consequence: This breakpoint choice controls presentation only. It does not
+  cap the number of panels a beat may gain during panel direction.

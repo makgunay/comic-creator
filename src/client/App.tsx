@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Project } from "../domain/project";
-import { comicApi, type ComicApi } from "./api/client";
+import {
+  comicApi,
+  type ComicApi,
+  type GenerationConfigStatus,
+} from "./api/client";
 import { AppFrame, type WorkshopStep } from "./components/AppFrame";
-import { StatusNotice } from "./components/StatusNotice";
 import { HeroWorkshop } from "./features/hero/HeroWorkshop";
 import { LaunchScreen } from "./features/launch/LaunchScreen";
 import { StorySpine } from "./features/story/StorySpine";
@@ -20,11 +23,11 @@ function ArrowIcon({ direction = "right" }: { direction?: "left" | "right" }) {
 function ProjectWorkshop({
   projectId,
   api,
-  generationEnabled,
+  configStatus,
 }: {
   projectId: string;
   api: ComicApi;
-  generationEnabled: boolean;
+  configStatus: GenerationConfigStatus;
 }) {
   const { project, saveState, update } = useProject(projectId, api);
   const [step, setStep] = useState<WorkshopStep>("hero");
@@ -44,13 +47,13 @@ function ProjectWorkshop({
       title={project.title}
       currentStep={step}
       saveState={saveState}
-      generationEnabled={generationEnabled}
+      configStatus={configStatus}
       onStepChange={setStep}
     >
       {step === "hero" ? (
         <HeroWorkshop
           project={project}
-          generationEnabled={generationEnabled}
+          configStatus={configStatus}
           onChange={replaceProject}
         />
       ) : null}
@@ -73,7 +76,11 @@ function ProjectWorkshop({
           </button>
         ) : <span />}
         {step === "hero" ? (
-          <button className="button button-next" type="button" onClick={() => setStep("style")}>
+          <button
+            className="button button-next button-next-blue"
+            type="button"
+            onClick={() => setStep("style")}
+          >
             Next: Choose a style
             <ArrowIcon />
           </button>
@@ -96,21 +103,32 @@ function ProjectWorkshop({
 }
 
 export function App({ api = comicApi }: { api?: ComicApi }) {
-  const [generationEnabled, setGenerationEnabled] = useState(false);
-  const [configError, setConfigError] = useState(false);
+  const [configStatus, setConfigStatus] = useState<GenerationConfigStatus>("loading");
+  const configRequest = useRef(0);
   const [projectId, setProjectId] = useState<string>();
 
   useEffect(() => {
+    const requestId = configRequest.current + 1;
+    configRequest.current = requestId;
+    let active = true;
     const controller = new AbortController();
+    setConfigStatus("loading");
     void api.config({ signal: controller.signal })
-      .then((config) => setGenerationEnabled(config.generationEnabled))
+      .then((config) => {
+        if (active && configRequest.current === requestId) {
+          setConfigStatus(config.generationEnabled ? "enabled" : "disabled");
+        }
+      })
       .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setConfigError(true);
-          setGenerationEnabled(false);
+        const aborted = error instanceof DOMException && error.name === "AbortError";
+        if (!aborted && active && configRequest.current === requestId) {
+          setConfigStatus("error");
         }
       });
-    return () => controller.abort();
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [api]);
 
   if (projectId) {
@@ -118,25 +136,16 @@ export function App({ api = comicApi }: { api?: ComicApi }) {
       <ProjectWorkshop
         projectId={projectId}
         api={api}
-        generationEnabled={generationEnabled}
+        configStatus={configStatus}
       />
     );
   }
 
   return (
-    <>
-      {configError ? (
-        <div className="global-notice">
-          <StatusNotice title="Local mode">
-            Configuration could not be checked, so drawing stays off for now.
-          </StatusNotice>
-        </div>
-      ) : null}
-      <LaunchScreen
-        api={api}
-        generationEnabled={generationEnabled}
-        onOpenProject={(project) => setProjectId(project.id)}
-      />
-    </>
+    <LaunchScreen
+      api={api}
+      configStatus={configStatus}
+      onOpenProject={(project) => setProjectId(project.id)}
+    />
   );
 }
