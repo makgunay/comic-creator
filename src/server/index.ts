@@ -1,10 +1,12 @@
-import "dotenv/config";
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApp } from "./app";
+import { loadEnvironment, readConfig } from "./config";
 
-const port = Number(process.env.PORT ?? 4173);
+loadEnvironment();
+const config = readConfig();
+const port = config.PORT;
 const app = createApp();
 
 if (process.env.NODE_ENV === "production") {

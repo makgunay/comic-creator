@@ -9,8 +9,7 @@ Build Week MVP implementation is underway on
 
 ## Current focus
 
-Implement Task 3 of the implementation plan, then pass its specification and
-code-quality review gates.
+Resolve Task 3's live panel-latency gate before starting Task 4.
 
 ## Verified facts
 
@@ -40,6 +39,16 @@ code-quality review gates.
   four beats and panels, relative image asset keys, derived pagination, and
   immutable candidate-image approval transitions. Focused domain tests, strict
   typechecking, and full verification pass.
+- Task 3's deterministic OpenAI boundary is implemented and verified: strict
+  rendering-only enums, exact server-owned visual-fact composition, prompt
+  exclusions, injected-client request tests, safe metadata logging, product-safe
+  errors, and `.env.local`-before-`.env` loading. Focused tests pass 15/15;
+  `npm run verify` passes 38/38 tests, typecheck, and production build.
+- A live matched-pair smoke created `tmp/openai-smoke/hero.png` and `panel.png`
+  with `gpt-image-2`. The final measured hero latency was 29,891 ms and panel
+  latency was 32,335 ms. Manual inspection confirmed the panel recognizably
+  retained the violet jacket, round goggles, curly hair, and silver moon-kite
+  spool from the hero reference.
 
 ## Active decisions
 
@@ -54,18 +63,18 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Blockers and unknowns
 
-- The reference-guided hero workflow must be proven against live model latency
-  and consistency before the full generation UI is built.
-- Task 3 must prove the live OpenAI direction and reference-image path before
-  the full generation workflow is built.
+- Task 3 is a no-go on latency: recognizable reference continuity passes, hero
+  latency passes the 60,000 ms limit, but panel latency misses the 30,000 ms
+  limit by 2,335 ms after supported request and reference-size tuning.
+- Task 4 must not begin until the panel-latency gate is resolved or explicitly
+  reconsidered.
 
 ## Next actions
 
-1. Implement and review Task 3: prove the OpenAI direction and reference-image
-   path.
-2. Continue through the plan without pausing between reviewed tasks.
-3. Prove the live hero-reference and panel-generation path before the full UI.
-4. Build and verify the solo core before considering two-author stretch work.
+1. Review Task 3's deterministic implementation and live evidence.
+2. Decide whether to continue latency investigation or explicitly reconsider
+   the 30,000 ms panel gate based on the observed 31–32 second tuned results.
+3. Keep Task 4 blocked until that decision is recorded.
 
 ## Resume cue
 
