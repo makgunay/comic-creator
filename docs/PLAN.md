@@ -127,7 +127,7 @@ a celebratory readable Premiere at desktop and mobile widths.
 
 - [x] Finalize README and third-party notices.
 - [x] Record how Codex and GPT-5.6 contributed.
-- [ ] Publish the repository with Apache-2.0 source licensing and an explicit
+- [x] Publish the repository with Apache-2.0 source licensing and an explicit
   all-rights-reserved carve-out for original sample artwork and branding.
 - [ ] Capture the primary `/feedback` session ID.
 - [ ] Record and verify the public YouTube demo.

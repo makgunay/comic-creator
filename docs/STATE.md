@@ -62,10 +62,11 @@ Prepare the verified local project for its external submission steps.
   clipping, overlap, distortion, or broken glyph.
 - Clean Node 26 setup, production-only dependencies, startup recovery, and a
   separate `npm ci && npm run verify` checkout passed.
-- The Devpost project remains a draft. `makgunay/comic-creator` is being
-  published with Apache-2.0 licensing for source code and documentation while
-  original sample artwork and project identity remain reserved. The category
-  is `Education`; the deadline is 2026-07-21 at 5:00 PM Pacific Time.
+- The Devpost project remains a draft. `makgunay/comic-creator` is public with
+  Apache-2.0 licensing for source code and documentation, while original sample
+  artwork and project identity remain reserved. Draft PR #1 carries the full
+  MVP into `main`. The category is `Education`; the deadline is 2026-07-21 at
+  5:00 PM Pacific Time.
 
 ## Active decisions
 
