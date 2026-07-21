@@ -199,3 +199,20 @@ new entry that explicitly supersedes the earlier decision.
 - Consequence: Coach requests are optional, moderated, transcript-free, and
   limited to necessary story text. Human-photo upload, public sharing,
   accounts, points, streaks, and leaderboards remain out of scope.
+
+## D-014 — Publish the source under Apache-2.0
+
+- Date: 2026-07-21
+- Status: Accepted; supersedes D-001's private-repository decision.
+- Context: The complete Build Week project is ready for repository review, and
+  the official rules accept a public repository when it carries relevant
+  licensing.
+- Decision: Make `makgunay/comic-creator` public. License the source code and
+  project documentation under Apache-2.0 while reserving the original sample
+  artwork and the Comic Creator name and visual identity.
+- Rationale: A clear permissive license simplifies judge access and permits
+  code reuse with an explicit patent grant without giving away the project's
+  original visual assets or identity.
+- Consequence: Public Git history may be cloned and retained permanently. Run
+  a secret-history scan before publication, keep the asset exclusion visible,
+  and use the public repository instead of private judge invitations.

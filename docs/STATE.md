@@ -62,13 +62,15 @@ Prepare the verified local project for its external submission steps.
   clipping, overlap, distortion, or broken glyph.
 - Clean Node 26 setup, production-only dependencies, startup recovery, and a
   separate `npm ci && npm run verify` checkout passed.
-- The Devpost project remains a draft; `makgunay/comic-creator` is private and
-  has no open-source license. The category is `Education`; the deadline is
-  2026-07-21 at 5:00 PM Pacific Time.
+- The Devpost project remains a draft. `makgunay/comic-creator` is being
+  published with Apache-2.0 licensing for source code and documentation while
+  original sample artwork and project identity remain reserved. The category
+  is `Education`; the deadline is 2026-07-21 at 5:00 PM Pacific Time.
 
 ## Active decisions
 
-- Keep the repository private during initial development.
+- Publish the repository under Apache-2.0 with the accepted non-code asset
+  carve-out; this supersedes the initial private-development decision.
 - Use a small, model-agnostic context system with one active plan.
 - Build a local-only core with sample mode; do not wire hosting or accounts.
 - Preserve story authorship by limiting AI to visual-direction compilation and
@@ -91,8 +93,7 @@ See `DECISIONS.md` for rationale and consequences.
 ## Next actions
 
 1. Record the public demo and capture the primary `/feedback` session ID.
-2. Grant required private-repository access.
-3. Complete and independently verify every Devpost field, then submit.
+2. Complete and independently verify every Devpost field, then submit.
 
 ## Resume cue
 

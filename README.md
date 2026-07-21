@@ -164,9 +164,10 @@ after a browser restart and a clipped Hero heading, then verified their fixes.
 The founder chose the child-as-author principle, age range, Education category,
 four-beat core, editable preset styles, fixed-question AI-coach boundary,
 same-device pass-the-pen model, explicit approval model, local-only
-architecture, private-repository strategy, and 40-second observed panel target.
-Humans also accepted the visual direction and decided that sample mode should
-be the judging default.
+architecture, public Apache-2.0 source license, and 40-second observed panel
+target. Humans also accepted the visual direction, reserved the original
+sample artwork and project identity, and decided that sample mode should be the
+judging default.
 
 These choices were not delegated to a model. Durable rationale is recorded in
 [`docs/DECISIONS.md`](docs/DECISIONS.md).
@@ -200,6 +201,18 @@ abuse-prevention, and data-retention work.
 - Literacy improvement, retention, willingness to pay, and broader educational
   outcomes remain unproven.
 
+## License
+
+The source code and project documentation are licensed under the
+[Apache License 2.0](LICENSE). The original sample artwork under
+[`sample-assets/moon-kite/images/`](sample-assets/moon-kite/images/) is not
+included in that grant; it remains copyright © 2026 Mehmet Akgunay, all rights
+reserved, as stated in its local license notice. The Apache license also does
+not grant rights to the Comic Creator name or visual identity.
+
+Third-party components remain subject to their respective licenses. See
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
 ## Build Week judging
 
 No hosted website is required for this submission. Judges can run the project
@@ -217,6 +230,6 @@ The intended under-three-minute demo is:
 5. reopen the opaque local project URL; and
 6. show Premiere and download the printable PDF.
 
-Before submission, the private repository still needs the required judging
-access, the public YouTube demo, the primary Codex `/feedback` session ID, and
-the completed Devpost entry.
+The public repository fulfills the Build Week repository-access requirement.
+Before submission, the project still needs the public YouTube demo, the primary
+Codex `/feedback` session ID, and the completed Devpost entry.

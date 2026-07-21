@@ -1,6 +1,6 @@
 # Rules and Constraints
 
-Last verified: 2026-07-20
+Last verified: 2026-07-21
 
 The official source is the
 [OpenAI Build Week rules](https://openai.devpost.com/rules). Reverify the live
@@ -29,12 +29,13 @@ rules before submission; the official page takes precedence over this summary.
 
 ## Repository access and licensing
 
-- Current choice: keep the GitHub repository private during initial
-  development and do not add an open-source license yet.
-- Before submission, grant repository access to `testing@devpost.com` and
-  `build-week-event@openai.com`.
-- If the repository becomes public, choose and add an appropriate open-source
-  license before publishing. This requires a new explicit decision.
+- Publish the GitHub repository for judging with its source code and project
+  documentation licensed under Apache-2.0.
+- Keep original sample artwork and the Comic Creator name and visual identity
+  outside the Apache-2.0 grant. Mark the sample image directory explicitly.
+- Public repository access satisfies the judging-code requirement, so private
+  invitations to `testing@devpost.com` and `build-week-event@openai.com` are
+  not required while the repository remains public.
 - Keep the working project available to the sponsor, administrator, and judges
   free of charge through the judging period.
 

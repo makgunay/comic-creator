@@ -25,5 +25,6 @@ Trebuchet, or system sans-serif fallback stack.
 
 The “Nova and the Moon Kite” PNG sample artwork is original project material
 generated for this repository by `scripts/build-sample-assets.ts`. It is not
-third-party stock art. No music, video, trademarked character, uploaded child
-photo, or external dataset is bundled.
+third-party stock art and is excluded from the repository's Apache-2.0 grant;
+see `sample-assets/moon-kite/images/LICENSE`. No music, video, trademarked
+character, uploaded child photo, or external dataset is bundled.

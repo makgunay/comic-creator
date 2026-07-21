@@ -127,9 +127,10 @@ a celebratory readable Premiere at desktop and mobile widths.
 
 - [x] Finalize README and third-party notices.
 - [x] Record how Codex and GPT-5.6 contributed.
+- [ ] Publish the repository with Apache-2.0 source licensing and an explicit
+  all-rights-reserved carve-out for original sample artwork and branding.
 - [ ] Capture the primary `/feedback` session ID.
 - [ ] Record and verify the public YouTube demo.
-- [ ] Grant private repository access to the required judging accounts.
 - [ ] Complete every required Devpost field and submit before the deadline.
 
 Acceptance: Devpost reports the project as submitted, not draft, and all links
@@ -142,5 +143,5 @@ and access paths have been checked independently.
   completion as separate claims.
 - Do not push, publish, grant access, upload media, or submit Devpost without
   explicit user authorization.
-- Preserve the private-repository and local-first boundaries until the user
-  changes them.
+- Preserve the local-first application boundary. Publish repository visibility
+  only with the accepted license scope and verified secret-history evidence.
