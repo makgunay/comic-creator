@@ -7,6 +7,7 @@ import {
   type Project,
 } from "../../domain/project";
 import type { ApiErrorPayload } from "../../domain/api";
+import { CoachSignalSchema } from "../../domain/story-coach";
 
 const ConfigResponseSchema = z.strictObject({
   generationEnabled: z.boolean(),
@@ -47,8 +48,17 @@ const HeroApprovalResponseSchema = z.strictObject({
   heroReferenceChanged: z.boolean(),
 });
 
+const CoachRequestSchema = z.strictObject({
+  previousSignal: CoachSignalSchema.optional(),
+});
+
+const CoachResponseSchema = z.strictObject({
+  signal: CoachSignalSchema,
+});
+
 const PanelGenerationInputSchema = z.strictObject({
   revisionDirection: z.string().max(PANEL_REVISION_MAX_LENGTH),
+  embeddedLettering: z.boolean().optional(),
 });
 
 export type PublicConfig = z.infer<typeof ConfigResponseSchema>;
@@ -56,6 +66,8 @@ export type GenerationConfigStatus = "loading" | "enabled" | "disabled" | "error
 export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
 export type HeroApprovalResponse = z.infer<typeof HeroApprovalResponseSchema>;
 export type PanelGenerationInput = z.infer<typeof PanelGenerationInputSchema>;
+export type CoachRequest = z.infer<typeof CoachRequestSchema>;
+export type CoachResponse = z.infer<typeof CoachResponseSchema>;
 
 export interface RequestOptions {
   signal?: AbortSignal;
@@ -76,6 +88,7 @@ export interface ComicApi {
   generateHero(projectId: string, options?: RequestOptions): Promise<ProjectResponse>;
   approveHero(projectId: string, imageId: string, options?: RequestOptions): Promise<HeroApprovalResponse>;
   rejectHeroCandidate(projectId: string, imageId: string, options?: RequestOptions): Promise<ProjectResponse>;
+  coachStory(projectId: string, input?: CoachRequest, options?: RequestOptions): Promise<CoachResponse>;
   generatePanel(projectId: string, panelId: string, input: PanelGenerationInput, options?: RequestOptions): Promise<ProjectResponse>;
   approvePanelVersion(projectId: string, panelId: string, versionId: string, options?: RequestOptions): Promise<ProjectResponse>;
   rejectPanelCandidate(projectId: string, panelId: string, versionId: string, options?: RequestOptions): Promise<ProjectResponse>;
@@ -261,6 +274,19 @@ export class ComicApiClient implements ComicApi {
       `/projects/${encodeURIComponent(projectId)}/hero/${encodeURIComponent(imageId)}/reject`,
       requestInit("POST", options, {}),
       ProjectResponseSchema.parse,
+    );
+  }
+
+  coachStory(
+    projectId: string,
+    input: CoachRequest = {},
+    options: RequestOptions = {},
+  ): Promise<CoachResponse> {
+    const validInput = CoachRequestSchema.parse(input);
+    return this.request(
+      `/projects/${encodeURIComponent(projectId)}/coach`,
+      requestInit("POST", options, validInput),
+      CoachResponseSchema.parse,
     );
   }
 

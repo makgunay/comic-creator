@@ -46,16 +46,48 @@ async function seed(store: ProjectStore) {
 }
 
 describe("generation routes", () => {
+  it("returns a signal-only coach response without mutating the project", async () => {
+    const { app, store, provider } = await harness("generation-routes-coach");
+    const project = await seed(store);
+    project.beats.forEach((beat, index) => {
+      beat.childText = `Story beat ${index + 1}`;
+    });
+    await store.save(project);
+    const before = await store.load(project.id);
+
+    const response = await request(app)
+      .post(`/api/projects/${project.id}/coach`)
+      .send({ previousSignal: "setup_needs_setting" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ signal: "big_moment_needs_choice" });
+    expect(provider.coachInputs[0]).toMatchObject({
+      previousSignal: "setup_needs_setting",
+    });
+    expect(await store.load(project.id)).toEqual(before);
+  });
+
   it("returns schema-valid whole projects for generation and explicit approval/rejection", async () => {
     const { app, store } = await harness("generation-routes-projects");
     const project = await seed(store);
     const panelId = project.panels[0]!.id;
+    project.panels[0]!.overlays = [{
+      id: "route-dialogue",
+      kind: "dialogue",
+      text: "Exact route words",
+      x: .1,
+      y: .1,
+      width: .4,
+      height: .2,
+    }];
+    await store.save(project);
 
     const generated = await request(app)
       .post(`/api/projects/${project.id}/panels/${panelId}/generate`)
-      .send({ revisionDirection: "Warmer" });
+      .send({ revisionDirection: "Warmer", embeddedLettering: true });
     expect(generated.status).toBe(201);
     expect(ProjectSchema.safeParse(generated.body.project).success).toBe(true);
+    expect(generated.body.project.panels[0].imageVersions.at(-1).letteringMode).toBe("embedded");
     const candidateId = generated.body.project.panels[0].imageVersions.at(-1).id;
 
     const kept = await request(app)
@@ -113,6 +145,12 @@ describe("generation routes", () => {
       },
     });
     expect(JSON.stringify(response.body)).not.toMatch(/OPENAI_API_KEY|sk-/);
+
+    const coach = await request(app)
+      .post(`/api/projects/${project.id}/coach`)
+      .send({});
+    expect(coach.status).toBe(503);
+    expect(coach.body.error.code).toBe("missing_key");
   });
 
   it("uses strict bounded bodies and product-safe 400/404 responses", async () => {
@@ -127,8 +165,17 @@ describe("generation routes", () => {
         .post(`/api/projects/${project.id}/panels/${panelId}/generate`)
         .send({ revisionDirection: "Night", dialogue: "must be rejected" }),
       await request(app)
+        .post(`/api/projects/${project.id}/panels/${panelId}/generate`)
+        .send({ revisionDirection: "Night", embeddedLettering: "yes" }),
+      await request(app)
         .post(`/api/projects/${project.id}/hero/generate`)
         .send({ unexpected: true }),
+      await request(app)
+        .post(`/api/projects/${project.id}/coach`)
+        .send({ question: "Write my story" }),
+      await request(app)
+        .post(`/api/projects/${project.id}/coach`)
+        .send({ previousSignal: "invent_a_dragon" }),
     ];
     for (const response of responses) {
       expect(response.status).toBe(400);

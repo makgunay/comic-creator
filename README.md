@@ -14,24 +14,35 @@ comic the child recognizes as their own.
 ## The authorship rule
 
 The child owns every plot event, character fact, story beat, caption, and line
-of dialogue. GPT-5.6 may choose constrained visual rendering parameters, and an
-image model may illustrate those directions. The app never asks a model to
-write or rewrite the story. Dialogue and captions remain exact local overlays
-and are excluded from model prompts.
+of dialogue. GPT-5.6 may choose constrained visual rendering parameters or
+classify one missing story element, and an image model may illustrate the
+child's directions. The app never asks a model to write or rewrite the story.
+Dialogue and captions remain exact local overlays by default; an explicit
+lettering experiment may send only the child's exact existing words and saved
+placement to the image model.
 
 ## What works
 
 - Create and reopen a local comic through its opaque project URL.
-- Describe and explicitly approve an original hero.
-- Start from cartoon, manga, or superhero style notes, then edit them.
+- Build and explicitly approve an original hero from a guided recipe or a
+  freeform description; photo upload is intentionally unavailable.
+- Start from cartoon, manga, or superhero, add up to two plain-language moods,
+  and optionally fine-tune the style notes.
 - Write Setup, Problem, Big Moment, and Ending.
+- Ask the optional AI Story Coach for one neutral question about a missing
+  story element without receiving generated prose or rewrites.
+- Pass the pen between two same-device authors and retain local coauthor credit
+  without accounts or social features.
 - Direct four or more ordered panels with exact dialogue and captions; add
   panels to any story beat up to the 16-panel local-project limit.
+- Work progressively through scene, words, and draw/choose controls, with
+  revisions and experimental lettering revealed only when relevant.
 - Generate, redirect, approve, or dismiss artwork without silently replacing
   the current approved version.
 - Restore the project from local filesystem storage after a server restart;
   interrupted drawing attempts reopen as safe retryable failures.
-- Preview four panels per page; additional panels create additional pages.
+- Preview four panels per page, present the comic distraction-free, and move
+  through additional pages with readable navigation.
 - Export approved artwork and exact overlays to a printable US Letter PDF.
 - Explore and edit a bundled four-panel sample without an API key or paid call.
 
@@ -46,7 +57,8 @@ under the local `data/` directory, which is ignored by Git.
 Live illustration is deliberately server-only:
 
 1. exact child-authored visual facts are moderated;
-2. GPT-5.6 Luna selects only constrained rendering choices;
+2. GPT-5.6 Luna selects only constrained rendering choices, or returns one
+   constrained Story Coach signal from the four beat fields;
 3. GPT Image 2 generates a hero or edits a panel from the approved hero
    reference; and
 4. the child explicitly approves or dismisses the candidate.
@@ -124,15 +136,19 @@ Live results vary and are reported separately from deterministic test results.
 ## OpenAI model roles
 
 - `gpt-5.6-luna` compiles child-authored visual facts into a strict choice of
-  shot size, camera angle, lighting, palette, and focus. It does not author
-  prose or story content.
+  shot size, camera angle, lighting, palette, and focus. For the optional Story
+  Coach it receives only the four beat fields and returns one validated
+  missing-element signal; the browser maps that signal to fixed neutral copy.
+  It does not author prose or story content.
 - `gpt-image-2` creates the square hero reference and reference-guided panel
   artwork.
 - `omni-moderation-latest` checks the child-authored visual request before a
   generation call.
 
-Model names are server-owned configuration. Exact dialogue, captions, title,
-byline, and story beats do not enter image or compiler prompts.
+Model names are server-owned configuration. Title and byline do not enter
+generation prompts. Exact dialogue and captions stay local except during the
+explicit lettering experiment. Story beats enter only the optional,
+transcript-free coach request or the child's panel-direction context.
 
 ## How Codex accelerated the build
 
@@ -146,10 +162,11 @@ after a browser restart and a clipped Hero heading, then verified their fixes.
 ## Human decisions
 
 The founder chose the child-as-author principle, age range, Education category,
-four-beat core, editable preset styles, explicit approval model, local-only
-architecture, private-repository strategy, 40-second observed panel target,
-and the decision to defer two-author mode. Humans also accepted the visual
-direction and decided that sample mode should be the judging default.
+four-beat core, editable preset styles, fixed-question AI-coach boundary,
+same-device pass-the-pen model, explicit approval model, local-only
+architecture, private-repository strategy, and 40-second observed panel target.
+Humans also accepted the visual direction and decided that sample mode should
+be the judging default.
 
 These choices were not delegated to a model. Durable rationale is recorded in
 [`docs/DECISIONS.md`](docs/DECISIONS.md).
@@ -178,7 +195,6 @@ abuse-prevention, and data-retention work.
 - The project URL must be retained; there is no recent-project gallery.
 - PDF export uses standard embedded fonts and visibly rejects unsupported
   glyphs or text that cannot fit legibly.
-- The same-device two-author mode is unstarted stretch work.
 - There is no hosting, account system, public sharing, cloud backup, mobile
   native app, or production operations layer.
 - Literacy improvement, retention, willingness to pay, and broader educational

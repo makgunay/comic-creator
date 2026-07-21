@@ -21,8 +21,9 @@ afterEach(() => {
 });
 
 describe("ComicPreview", () => {
-  it("renders panels five through eight on a second numbered page", () => {
+  it("shows one numbered page at a time and navigates to panels five through eight", async () => {
     const project = makeEightPanelProject();
+    const user = userEvent.setup();
 
     render(
       <ComicPreview
@@ -34,12 +35,60 @@ describe("ComicPreview", () => {
       />,
     );
 
-    const pages = screen.getAllByRole("article", { name: /Comic page/ });
-    expect(pages).toHaveLength(2);
-    expect(within(pages[0]!).getByText("Page 1 of 2")).toBeInTheDocument();
-    expect(within(pages[1]!).getByText("Page 2 of 2")).toBeInTheDocument();
-    expect(within(pages[1]!).getByLabelText("Panel 5")).toBeInTheDocument();
-    expect(within(pages[1]!).getByLabelText("Panel 8")).toBeInTheDocument();
+    expect(screen.getAllByRole("article", { name: /Comic page/ })).toHaveLength(1);
+    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Panel 5")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Next page" }));
+    expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Panel 5")).toBeInTheDocument();
+    expect(screen.getByLabelText("Panel 8")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+  });
+
+  it("offers a focused presentation mode that exits with Escape", async () => {
+    const project = makeEightPanelProject();
+    const user = userEvent.setup();
+    render(
+      <ComicPreview
+        project={project}
+        api={makeClientApi(project)}
+        imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
+        exportUrl="/api/projects/test/export.pdf"
+        onBackToPanels={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Present my comic" }));
+    expect(screen.getByRole("dialog", { name: "Comic presentation" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Exit presentation" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Comic presentation" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Present my comic" })).toHaveFocus();
+  });
+
+  it("celebrates the completed artifact and credits local co-authors", () => {
+    const project = makeProjectWithDialogue("Exact words");
+    project.collaboration = {
+      enabled: true,
+      authors: ["Ari", "Rowan"],
+      activeAuthorIndex: 1,
+    };
+    project.localAuthorCredit = "Stale credit";
+    render(
+      <ComicPreview
+        project={project}
+        api={makeClientApi(project)}
+        imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
+        exportUrl="/api/projects/test/export.pdf"
+        onBackToPanels={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("By Ari & Rowan")).toBeInTheDocument();
+    expect(screen.getByText(/comic is ready for its premiere/i)).toBeInTheDocument();
+    expect(screen.getByText(/Which moment are you most proud of/i)).toBeInTheDocument();
+    expect(screen.getByText(/Comic complete/)).toBeInTheDocument();
   });
 
   it("shows exact authored title, byline, dialogue, and caption as read-only text", () => {
@@ -71,6 +120,33 @@ describe("ComicPreview", () => {
     expect(screen.getByText("Tonight, I’ll touch the moon!")).toBeInTheDocument();
     expect(screen.getByText("A windy rooftop.")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("does not visibly double local overlays when approved artwork has embedded lettering", () => {
+    const project = makeProjectWithDialogue("Already lettered");
+    const approved = makeImageVersion({
+      id: "lettered-art",
+      localPath: "images/lettered-art.png",
+      status: "approved",
+      letteringMode: "embedded",
+    });
+    project.panels[0]!.approvedImageVersionId = approved.id;
+    project.panels[0]!.imageVersions = [approved];
+
+    render(
+      <ComicPreview
+        project={project}
+        api={makeClientApi(project)}
+        imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
+        exportUrl="/api/projects/test/export.pdf"
+        onBackToPanels={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Already lettered", { selector: ".comic-overlay" }))
+      .not.toBeInTheDocument();
+    expect(screen.getByText(/dialogue: already lettered/i, { selector: ".sr-only" }))
+      .toBeInTheDocument();
   });
 
   it("renders only approved artwork and gives missing approval an honest placeholder", () => {

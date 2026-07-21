@@ -27,15 +27,19 @@ function DownloadIcon() {
   );
 }
 
-function approvedImageId(panel: Project["panels"][number]): string | undefined {
+function approvedImageVersion(panel: Project["panels"][number]) {
   const id = panel.approvedImageVersionId;
   const version = id
     ? panel.imageVersions.find((candidate) => candidate.id === id)
     : undefined;
   return version?.status === "approved"
     && version.localPath === `images/${id}.png`
-    ? id
+    ? version
     : undefined;
+}
+
+function approvedImageId(panel: Project["panels"][number]): string | undefined {
+  return approvedImageVersion(panel)?.id;
 }
 
 export function ComicPreview({
@@ -55,6 +59,11 @@ export function ComicPreview({
   const [downloadNotice, setDownloadNotice] = useState<
     { kind: "success" | "error"; message: string } | undefined
   >();
+  const [pageIndex, setPageIndex] = useState(0);
+  const [presenting, setPresenting] = useState(false);
+  const presentButton = useRef<HTMLButtonElement>(null);
+  const exitButton = useRef<HTMLButtonElement>(null);
+  const wasPresenting = useRef(false);
   const mounted = useRef(false);
   const requestIdentity = useRef(0);
   const activeController = useRef<AbortController | undefined>(undefined);
@@ -74,6 +83,27 @@ export function ComicPreview({
       activeController.current = undefined;
     };
   }, [api, project.id]);
+
+  useEffect(() => {
+    if (presenting) {
+      wasPresenting.current = true;
+      exitButton.current?.focus();
+      return;
+    }
+    if (wasPresenting.current) {
+      wasPresenting.current = false;
+      presentButton.current?.focus();
+    }
+  }, [presenting]);
+
+  useEffect(() => {
+    if (!presenting) return;
+    const exitOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPresenting(false);
+    };
+    document.addEventListener("keydown", exitOnEscape);
+    return () => document.removeEventListener("keydown", exitOnEscape);
+  }, [presenting]);
 
   async function downloadPdf(event: MouseEvent<HTMLAnchorElement>) {
     if (
@@ -148,13 +178,107 @@ export function ComicPreview({
   }
 
   const pages = paginatePanels(project.panels);
+  const safePageIndex = Math.min(pageIndex, pages.length - 1);
+  const currentPanels = pages[safePageIndex]!;
+  const collaborationNames = project.collaboration?.enabled
+    ? project.collaboration.authors.map((author) => author.trim()).filter(Boolean)
+    : [];
+  const authorCredit = collaborationNames.length > 0
+    ? collaborationNames.join(" & ")
+    : project.localAuthorCredit || "A new comic author";
+
+  const page = (
+    <article
+      className="comic-page"
+      aria-label={`Comic page ${safePageIndex + 1}`}
+    >
+      <div className="comic-page-grid">
+        {currentPanels.map((panel) => {
+          const imageId = approvedImageId(panel);
+          const hasEmbeddedLettering = approvedImageVersion(panel)?.letteringMode === "embedded";
+          return (
+            <section
+              className="comic-panel"
+              aria-label={`Panel ${panel.order + 1}`}
+              key={panel.id}
+            >
+              {imageId ? (
+                <img
+                  src={imageUrl(panel.id, imageId)}
+                  alt={`Approved artwork for panel ${panel.order + 1}`}
+                />
+              ) : (
+                <p className="comic-panel-placeholder">
+                  Approve artwork for this panel to include it in the comic.
+                </p>
+              )}
+              {hasEmbeddedLettering ? (
+                <span className="sr-only">
+                  {panel.overlays.map((overlay) => (
+                    `${overlay.kind === "dialogue" ? "Dialogue" : "Caption"}: ${overlay.text}`
+                  )).join(" ")}
+                </span>
+              ) : panel.overlays.map((overlay) => (
+                <div
+                  className={`comic-overlay comic-overlay-${overlay.kind}`}
+                  key={overlay.id}
+                  style={{
+                    left: `${overlay.x * 100}%`,
+                    top: `${overlay.y * 100}%`,
+                    width: `${overlay.width * 100}%`,
+                    minHeight: `${overlay.height * 100}%`,
+                  }}
+                >
+                  {overlay.text}
+                </div>
+              ))}
+            </section>
+          );
+        })}
+      </div>
+      <strong className="comic-page-number">
+        Page {safePageIndex + 1} of {pages.length}
+      </strong>
+    </article>
+  );
+
+  const pageNavigation = (
+    <nav className="comic-page-navigation" aria-label="Comic page navigation">
+      <button
+        type="button"
+        className="button button-secondary"
+        disabled={safePageIndex === 0}
+        onClick={() => setPageIndex((index) => Math.max(0, index - 1))}
+      >
+        Previous page
+      </button>
+      <span aria-live="polite">{safePageIndex + 1} / {pages.length}</span>
+      <button
+        type="button"
+        className="button button-next button-next-blue"
+        disabled={safePageIndex === pages.length - 1}
+        onClick={() => setPageIndex((index) => Math.min(pages.length - 1, index + 1))}
+      >
+        Next page
+      </button>
+    </nav>
+  );
+
   return (
     <section className="premiere-screen" aria-labelledby="premiere-title">
+      <div className="premiere-celebration">
+        <span aria-hidden="true">★</span>
+        <div>
+          <strong>Your comic is ready for its premiere!</strong>
+          <p>Made by you—from first idea to final panel.</p>
+        </div>
+        <span aria-hidden="true">★</span>
+      </div>
       <div className="premiere-intro">
         <div>
           <h1 id="premiere-title" tabIndex={-1}>{project.title}</h1>
           <p className="premiere-byline">
-            By {project.localAuthorCredit || "A new comic author"}
+            By {authorCredit}
           </p>
         </div>
         <div className="premiere-controls">
@@ -165,6 +289,14 @@ export function ComicPreview({
           >
             <ArrowIcon />
             Back to panels
+          </button>
+          <button
+            ref={presentButton}
+            className="button button-approve"
+            type="button"
+            onClick={() => setPresenting(true)}
+          >
+            Present my comic
           </button>
           <a
             className="button button-primary"
@@ -188,55 +320,40 @@ export function ComicPreview({
         </div>
       </div>
       <div className="comic-pages">
-        {pages.map((panels, pageIndex) => (
-          <article
-            className="comic-page"
-            aria-label={`Comic page ${pageIndex + 1}`}
-            key={pageIndex}
-          >
-            <div className="comic-page-grid">
-              {panels.map((panel) => {
-                const imageId = approvedImageId(panel);
-                return (
-                  <section
-                    className="comic-panel"
-                    aria-label={`Panel ${panel.order + 1}`}
-                    key={panel.id}
-                  >
-                    {imageId ? (
-                      <img
-                        src={imageUrl(panel.id, imageId)}
-                        alt={`Approved artwork for panel ${panel.order + 1}`}
-                      />
-                    ) : (
-                      <p className="comic-panel-placeholder">
-                        Approve artwork for this panel to include it in the comic.
-                      </p>
-                    )}
-                    {panel.overlays.map((overlay) => (
-                      <div
-                        className={`comic-overlay comic-overlay-${overlay.kind}`}
-                        key={overlay.id}
-                        style={{
-                          left: `${overlay.x * 100}%`,
-                          top: `${overlay.y * 100}%`,
-                          width: `${overlay.width * 100}%`,
-                          minHeight: `${overlay.height * 100}%`,
-                        }}
-                      >
-                        {overlay.text}
-                      </div>
-                    ))}
-                  </section>
-                );
-              })}
-            </div>
-            <strong className="comic-page-number">
-              Page {pageIndex + 1} of {pages.length}
-            </strong>
-          </article>
-        ))}
+        {presenting ? null : page}
       </div>
+      {presenting ? null : pageNavigation}
+      <div className="premiere-reflection">
+        <span aria-hidden="true">✦</span>
+        <div>
+          <strong>Which moment are you most proud of?</strong>
+          <p>Tell someone at your premiere what you chose and why.</p>
+        </div>
+      </div>
+      <p className="artifact-progress">
+        <span aria-hidden="true">✓</span> Comic complete · {project.panels.length} panels · {pages.length} {pages.length === 1 ? "page" : "pages"}
+      </p>
+
+      {presenting ? (
+        <div className="comic-presentation" role="dialog" aria-modal="true" aria-label="Comic presentation">
+          <header>
+            <div>
+              <strong>{project.title}</strong>
+              <span>By {authorCredit}</span>
+            </div>
+            <button
+              ref={exitButton}
+              type="button"
+              className="button button-secondary"
+              onClick={() => setPresenting(false)}
+            >
+              Exit presentation
+            </button>
+          </header>
+          <div className="presentation-page">{page}</div>
+          {pageNavigation}
+        </div>
+      ) : null}
     </section>
   );
 }

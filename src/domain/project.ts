@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { HeroRecipeSchema } from "./hero-recipe";
+import { StyleMoodSchema } from "./style-moods";
 
 export const PROJECT_TITLE_MAX_LENGTH = 100;
 export const LOCAL_AUTHOR_CREDIT_MAX_LENGTH = 60;
@@ -13,6 +15,7 @@ export const OVERLAY_TEXT_MAX_LENGTH = 500;
 export const OVERLAY_SPEAKER_MAX_LENGTH = 100;
 export const PANEL_REVISION_MAX_LENGTH = 500;
 export const CUSTOM_REVISION_MAX_LENGTH = 480;
+export const COLLABORATOR_NAME_MAX_LENGTH = 28;
 export const MAX_PANELS = 16;
 export const MAX_OVERLAYS_PER_PANEL = 12;
 export const MAX_HERO_IMAGE_VERSIONS = 12;
@@ -37,6 +40,13 @@ export const TextOverlaySchema = z.object({
   y: z.number().min(0).max(1),
   width: z.number().positive().max(1),
   height: z.number().positive().max(1),
+}).superRefine((overlay, context) => {
+  if (overlay.x + overlay.width > 1 || overlay.y + overlay.height > 1) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Overlay bounds must stay inside the panel.",
+    });
+  }
 });
 
 export const ImageVersionSchema = z.object({
@@ -49,6 +59,7 @@ export const ImageVersionSchema = z.object({
   providerRequestId: z.string().max(128).optional(),
   durationMs: z.number().int().nonnegative().optional(),
   childRevisionDirection: z.string().max(PANEL_REVISION_MAX_LENGTH),
+  letteringMode: z.literal("embedded").optional(),
   status: z.enum(["candidate", "approved", "rejected"]),
 }).superRefine((version, context) => {
   if (version.localPath !== `images/${version.id}.png`) {
@@ -90,6 +101,7 @@ const ProjectShapeSchema = z.object({
   updatedAt: z.string().datetime(),
   hero: z.object({
     childDescription: z.string().max(HERO_DESCRIPTION_MAX_LENGTH),
+    recipe: HeroRecipeSchema.optional(),
     approvedReferenceImageId: IdSchema.optional(),
     imageVersions: z.array(ImageVersionSchema).max(MAX_HERO_IMAGE_VERSIONS),
   }),
@@ -97,7 +109,16 @@ const ProjectShapeSchema = z.object({
     presetId: StylePresetSchema,
     baselineNotes: z.string().max(STYLE_NOTES_MAX_LENGTH),
     editedNotes: z.string().max(STYLE_NOTES_MAX_LENGTH),
+    moods: z.array(StyleMoodSchema).max(2).optional(),
   }),
+  collaboration: z.strictObject({
+    enabled: z.boolean(),
+    authors: z.tuple([
+      z.string().max(COLLABORATOR_NAME_MAX_LENGTH),
+      z.string().max(COLLABORATOR_NAME_MAX_LENGTH),
+    ]),
+    activeAuthorIndex: z.union([z.literal(0), z.literal(1)]),
+  }).optional(),
   beats: z.array(BeatSchema).length(4),
   panels: z.array(PanelSchema).min(4).max(MAX_PANELS),
 });
@@ -205,6 +226,12 @@ export const ProjectSchema = ProjectShapeSchema.superRefine((project, context) =
     project.hero.imageVersions.map((version) => version.id),
   );
   project.hero.imageVersions.forEach((version, index) => {
+    if (version.letteringMode !== undefined) {
+      addIssue(
+        ["hero", "imageVersions", index, "letteringMode"],
+        "Hero image versions cannot contain panel lettering.",
+      );
+    }
     if (version.sourceReferenceImageId !== undefined) {
       addIssue(
         ["hero", "imageVersions", index, "sourceReferenceImageId"],
@@ -285,8 +312,28 @@ export function createProject(input: unknown): Project {
     localAuthorCredit: validInput.localAuthorCredit,
     createdAt: now,
     updatedAt: now,
-    hero: { childDescription: "", imageVersions: [] },
-    visualStyle: { presetId: "cartoon", baselineNotes: cartoonNotes, editedNotes: cartoonNotes },
+    hero: {
+      childDescription: "",
+      recipe: {
+        mode: "guided",
+        appearance: "",
+        outfit: "",
+        special: "",
+        personality: "",
+      },
+      imageVersions: [],
+    },
+    visualStyle: {
+      presetId: "cartoon",
+      baselineNotes: cartoonNotes,
+      editedNotes: cartoonNotes,
+      moods: [],
+    },
+    collaboration: {
+      enabled: false,
+      authors: [validInput.localAuthorCredit.slice(0, COLLABORATOR_NAME_MAX_LENGTH), ""],
+      activeAuthorIndex: 0,
+    },
     beats,
     panels,
   });

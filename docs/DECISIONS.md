@@ -144,3 +144,58 @@ new entry that explicitly supersedes the earlier decision.
 - Consequence: The UI must present an honest drawing wait state, and generation
   performance remains observed rather than guaranteed. This target is an
   acceptance observation, not a promise for every live request.
+
+## D-011 — Keep exact local lettering as the default and test embedded lettering explicitly
+
+- Date: 2026-07-21
+- Status: Accepted
+- Context: GPT Image 2 is designed for improved text rendering, and the user
+  asked to try dialogue and captions inside generated panel art. Model-rendered
+  copy can still need iteration and cannot update instantly when a child edits
+  or moves a word box.
+- Decision: Keep exact editable local overlays as the default. Add an opt-in
+  panel-draw experiment that sends only the child's existing dialogue and
+  captions as exact quoted copy with placement instructions. Mark generated
+  image versions that contain lettering and suppress duplicate local rendering
+  while preserving the local text and geometry as the editable source.
+- Rationale: This tests GPT Image 2's lettering strength without silently
+  weakening the authorship promise or corrupting existing projects and exports.
+- Consequence: Embedded lettering is visibly experimental and may require a
+  redraw after edits. Existing and default generations remain art-only; local
+  overlays remain the exact fallback and source of truth.
+
+## D-012 — Preserve complete square panel artwork on screen
+
+- Date: 2026-07-21
+- Status: Accepted
+- Context: GPT Image 2 panel assets are validated as square images. D-009's
+  landscape browser frames crop scene edges and can hide model-rendered
+  lettering even when the generated source image is correct.
+- Decision: Supersede D-009 for browser panels. Resize the workshop and
+  Premiere art frames to the square source aspect ratio and fit the complete
+  image without cover cropping. Keep the existing square PDF treatment.
+- Rationale: The child should see the complete approved composition everywhere,
+  and one normalized coordinate system should govern editable overlays,
+  embedded-lettering direction, browser presentation, and print.
+- Consequence: Browser comic pages are taller and keep their two-by-two grid,
+  but no approved artwork is discarded at the frame edges. Lettering prompts
+  use the child's saved overlay coordinates directly instead of translating
+  them into a landscape-safe band.
+
+## D-013 — Add guided creation without surrendering authorship
+
+- Date: 2026-07-21
+- Status: Accepted
+- Context: The working core proves image generation and exact authorship, but
+  Hero and Panels expose too much blank-page and technical complexity, Story
+  lacks optional reflective scaffolding, and Premiere underplays the artifact.
+  The user accepted the complete product-audit direction.
+- Decision: Add a structured Hero recipe, child-facing style moods, artifact
+  progress, same-device pass-the-pen authorship, progressively disclosed panel
+  direction, and a celebratory Premiere. Add an on-demand AI coach that returns
+  only a constrained classification; the UI maps it to a fixed neutral question.
+- Rationale: Guided choices lower the floor while the fixed-question boundary
+  keeps plot, characters, events, dialogue, captions, and endings child-authored.
+- Consequence: Coach requests are optional, moderated, transcript-free, and
+  limited to necessary story text. Human-photo upload, public sharing,
+  accounts, points, streaks, and leaderboards remain out of scope.

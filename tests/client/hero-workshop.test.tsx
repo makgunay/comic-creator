@@ -28,7 +28,7 @@ function Harness({ project: initial, api, saveState = "saved" as const }: {
 }
 
 describe("HeroWorkshop", () => {
-  it("keeps the hero description child-authored", async () => {
+  it("compiles only the child-authored hero recipe", () => {
     const project = makeProject();
     const onChange = vi.fn();
     render(
@@ -42,15 +42,36 @@ describe("HeroWorkshop", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("What does your hero look like?"), {
+    fireEvent.change(screen.getByLabelText("What do they look like?"), {
       target: { value: "Nova wears a violet jacket." },
     });
 
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
       hero: expect.objectContaining({
-        childDescription: "Nova wears a violet jacket.",
+        recipe: expect.objectContaining({
+          mode: "guided",
+          appearance: "Nova wears a violet jacket.",
+        }),
+        childDescription: "Appearance: Nova wears a violet jacket.",
       }),
     }));
+  });
+
+  it("preserves an exact freeform path for children who want it", async () => {
+    const user = userEvent.setup();
+    const project = makeProject();
+    render(<Harness project={project} api={makeClientApi(project)} />);
+
+    await user.click(screen.getByRole("button", {
+      name: "I want to describe everything myself",
+    }));
+    await user.type(
+      screen.getByLabelText("Describe everything yourself"),
+      "Nova wears a violet jacket exactly as I imagined.",
+    );
+
+    expect(screen.getByLabelText("Describe everything yourself"))
+      .toHaveValue("Nova wears a violet jacket exactly as I imagined.");
   });
 
   it("disables generation in sample mode without rendering credential controls", () => {
@@ -89,7 +110,7 @@ describe("HeroWorkshop", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Draw my hero" }));
     expect(screen.getByText(/around half a minute/i)).toBeInTheDocument();
-    expect(screen.getByLabelText("What does your hero look like?")).toBeDisabled();
+    expect(screen.getByLabelText("What do they look like?")).toBeDisabled();
     await act(async () => pending.resolve({ project }));
   });
 

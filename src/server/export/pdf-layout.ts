@@ -88,6 +88,12 @@ export function buildPdfLayout(project: Project): PdfPageLayout[] {
         height: panelSize - 4,
       };
       panel.overlays.forEach(assertContainedOverlay);
+      const approvedVersion = panel.approvedImageVersionId
+        ? panel.imageVersions.find((version) => version.id === panel.approvedImageVersionId)
+        : undefined;
+      const visualOverlays = approvedVersion?.letteringMode === "embedded"
+        ? []
+        : panel.overlays;
       return {
         panelId: panel.id,
         panelNumber: panel.order + 1,
@@ -99,7 +105,7 @@ export function buildPdfLayout(project: Project): PdfPageLayout[] {
         width: panelSize,
         height: panelSize,
         artBox,
-        overlays: panel.overlays.map((overlay) => ({
+        overlays: visualOverlays.map((overlay) => ({
           kind: overlay.kind,
           text: overlay.text,
           x: artBox.x + overlay.x * artBox.width,

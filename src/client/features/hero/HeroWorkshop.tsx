@@ -5,6 +5,11 @@ import {
   type Project,
 } from "../../../domain/project";
 import {
+  HERO_RECIPE_FIELD_MAX_LENGTH,
+  compileHeroRecipe,
+  type HeroRecipe,
+} from "../../../domain/hero-recipe";
+import {
   ComicApiError,
   type ComicApi,
   type GenerationConfigStatus,
@@ -81,6 +86,13 @@ export function HeroWorkshop({
     && saveState === "saved"
     && !busy;
   const canDraw = canMutateServer && Boolean(project.hero.childDescription.trim());
+  const recipe: HeroRecipe = project.hero.recipe ?? {
+    mode: project.hero.childDescription.trim() ? "freeform" : "guided",
+    appearance: "",
+    outfit: "",
+    special: "",
+    personality: "",
+  };
 
   const beginRequest = () => ({
     id: ++requestIdentity.current,
@@ -97,7 +109,46 @@ export function HeroWorkshop({
     if (busy) return;
     onChange({
       ...project,
-      hero: { ...project.hero, childDescription },
+      hero: {
+        ...project.hero,
+        recipe: { ...recipe, mode: "freeform" },
+        childDescription,
+      },
+    });
+  };
+
+  const updateRecipe = (
+    field: "appearance" | "outfit" | "special" | "personality",
+    value: string,
+  ) => {
+    if (busy) return;
+    const nextRecipe: HeroRecipe = {
+      ...recipe,
+      mode: "guided",
+      [field]: value,
+    };
+    onChange({
+      ...project,
+      hero: {
+        ...project.hero,
+        recipe: nextRecipe,
+        childDescription: compileHeroRecipe(nextRecipe),
+      },
+    });
+  };
+
+  const setRecipeMode = (mode: HeroRecipe["mode"]) => {
+    if (busy) return;
+    const nextRecipe = { ...recipe, mode };
+    onChange({
+      ...project,
+      hero: {
+        ...project.hero,
+        recipe: nextRecipe,
+        childDescription: mode === "guided"
+          ? compileHeroRecipe(nextRecipe)
+          : project.hero.childDescription,
+      },
     });
   };
 
@@ -202,16 +253,84 @@ export function HeroWorkshop({
     <section className="screen-section hero-screen" aria-labelledby="hero-title">
       <div className="hero-form-panel">
         <h1 id="hero-title" tabIndex={-1}>Create your hero</h1>
-        <p>Describe the character only you can imagine.</p>
-        <label htmlFor="hero-description">What does your hero look like?</label>
-        <textarea
-          id="hero-description"
-          value={project.hero.childDescription}
-          disabled={busy}
-          onChange={(event) => updateDescription(event.target.value)}
-          placeholder="Their clothes, hair, special gear, colors, and anything that makes them unmistakable…"
-          maxLength={HERO_DESCRIPTION_MAX_LENGTH}
-        />
+        <p>Build the character only you can imagine.</p>
+        {recipe.mode === "guided" ? (
+          <div className="hero-recipe">
+            <h2>Hero recipe</h2>
+            <label>
+              What do they look like?
+              <textarea
+                value={recipe.appearance}
+                disabled={busy}
+                maxLength={HERO_RECIPE_FIELD_MAX_LENGTH}
+                placeholder="Hair, face, colors, size, or anything you notice first…"
+                onChange={(event) => updateRecipe("appearance", event.target.value)}
+              />
+            </label>
+            <label>
+              What are they wearing?
+              <textarea
+                value={recipe.outfit}
+                disabled={busy}
+                maxLength={HERO_RECIPE_FIELD_MAX_LENGTH}
+                placeholder="Clothes, shoes, costume, armor, or favorite colors…"
+                onChange={(event) => updateRecipe("outfit", event.target.value)}
+              />
+            </label>
+            <label>
+              What makes them special?
+              <textarea
+                value={recipe.special}
+                disabled={busy}
+                maxLength={HERO_RECIPE_FIELD_MAX_LENGTH}
+                placeholder="A tool, power, pet, accessory, or unforgettable detail…"
+                onChange={(event) => updateRecipe("special", event.target.value)}
+              />
+            </label>
+            <label>
+              What are they like?
+              <textarea
+                value={recipe.personality}
+                disabled={busy}
+                maxLength={HERO_RECIPE_FIELD_MAX_LENGTH}
+                placeholder="Curious, brave, funny, quiet, energetic…"
+                onChange={(event) => updateRecipe("personality", event.target.value)}
+              />
+            </label>
+            <button
+              className="hero-mode-switch"
+              type="button"
+              disabled={busy}
+              onClick={() => setRecipeMode("freeform")}
+            >
+              I want to describe everything myself
+            </button>
+            <div className="hero-description-summary" aria-live="polite">
+              <strong>Your hero description</strong>
+              <p>{project.hero.childDescription || "Your answers will appear here as you type."}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="hero-freeform">
+            <label htmlFor="hero-description">Describe everything yourself</label>
+            <textarea
+              id="hero-description"
+              value={project.hero.childDescription}
+              disabled={busy}
+              onChange={(event) => updateDescription(event.target.value)}
+              placeholder="Their clothes, hair, special gear, colors, personality, and anything that makes them unmistakable…"
+              maxLength={HERO_DESCRIPTION_MAX_LENGTH}
+            />
+            <button
+              className="hero-mode-switch"
+              type="button"
+              disabled={busy}
+              onClick={() => setRecipeMode("guided")}
+            >
+              Use the hero recipe
+            </button>
+          </div>
+        )}
         <button
           className="button button-primary draw-button"
           type="button"
@@ -223,6 +342,7 @@ export function HeroWorkshop({
           Draw my hero
         </button>
         <p className="drawing-status" id="hero-drawing-status">{drawingStatus}</p>
+        <p className="artifact-progress"><span aria-hidden="true">✓</span> Hero ready · Next: choose your style</p>
         {notice ? (
           <p
             className={`drawing-notice drawing-notice-${notice.tone}`}

@@ -5,17 +5,22 @@ import sharp from "sharp";
 import type { AppConfig } from "../config";
 import { MAX_GENERATED_IMAGE_BYTES } from "../storage/project-store";
 import {
+  CoachClassificationSchema,
   RenderingChoicesSchema,
+  StoryCoachInputSchema,
   VisualInputSchema,
+  type CoachClassification,
   type GeneratedImage,
   type GenerationProvider,
   type RenderingChoices,
+  type StoryCoachInput,
   type VisualInput,
 } from "./contracts";
 
 type ProviderOperation =
   | "moderate"
   | "choose_rendering"
+  | "coach_story"
   | "generate_hero"
   | "generate_panel";
 
@@ -143,6 +148,54 @@ export class OpenAIGenerationProvider implements GenerationProvider {
     }
   }
 
+  async classifyStory(input: StoryCoachInput): Promise<CoachClassification> {
+    const sanitized = StoryCoachInputSchema.safeParse(input);
+    if (!sanitized.success) {
+      throw compilerInvariant("Story input violated the coach schema");
+    }
+    const started = performance.now();
+    let providerRequestId: string | undefined;
+    try {
+      const response = await this.client.responses.parse({
+        model: this.config.OPENAI_TEXT_MODEL,
+        reasoning: { effort: "low" },
+        input: [
+          {
+            role: "system",
+            content:
+              [
+                "Classify which single narrative element most needs a neutral reflective question.",
+                "Return only one allowed signal. Do not write a question, rewrite text, or invent plot, characters, events, dialogue, captions, or an ending.",
+                "Check in story order and use the earliest clearly missing element:",
+                "setup_needs_hero when the setup does not name or describe any person, animal, creature, or character. A location alone means setup_needs_hero.",
+                "setup_needs_setting when a hero is present but the setup gives no place or surroundings. Use setup_needs_setting only when the setup includes a hero.",
+                "problem_needs_change when the problem does not state what changes, goes wrong, or must be solved.",
+                "big_moment_needs_choice when the big moment has no meaningful action, attempt, decision, or choice by the hero.",
+                "ending_needs_resolution when the ending does not show the outcome or what changed.",
+                "beats_need_connection only when all four moments contain their required element but their sequence is unclear.",
+                "Return ready only when every required element is present and the moments connect.",
+                "If a previous signal is supplied, choose another genuinely relevant signal when possible; never pretend a missing element is present just to avoid repeating it.",
+              ].join(" "),
+          },
+          { role: "user", content: JSON.stringify(sanitized.data) },
+        ],
+        text: {
+          format: zodTextFormat(CoachClassificationSchema, "story_coach_signal"),
+        },
+      });
+      providerRequestId = safeRequestId(response._request_id);
+      const parsed = CoachClassificationSchema.safeParse(response.output_parsed);
+      if (!parsed.success) {
+        throw compilerInvariant("Story coach output violated the signal schema");
+      }
+      this.recordComplete("coach_story", started, providerRequestId);
+      return parsed.data;
+    } catch (error) {
+      this.recordFailure("coach_story", started, error, providerRequestId);
+      throw error;
+    }
+  }
+
   async generateHero(prompt: string): Promise<GeneratedImage> {
     const started = performance.now();
     let providerRequestId: string | undefined;
@@ -261,7 +314,9 @@ export class OpenAIGenerationProvider implements GenerationProvider {
 
   private modelFor(operation: ProviderOperation): string {
     if (operation === "moderate") return this.config.OPENAI_MODERATION_MODEL;
-    if (operation === "choose_rendering") return this.config.OPENAI_TEXT_MODEL;
+    if (operation === "choose_rendering" || operation === "coach_story") {
+      return this.config.OPENAI_TEXT_MODEL;
+    }
     return this.config.OPENAI_IMAGE_MODEL;
   }
 }

@@ -1,5 +1,10 @@
 import { z } from "zod";
 import {
+  CoachSignalSchema,
+  type CoachSignal,
+} from "../../domain/story-coach";
+import {
+  BEAT_TEXT_MAX_LENGTH,
   HERO_DESCRIPTION_MAX_LENGTH,
   PANEL_ACTION_MAX_LENGTH,
   PANEL_FRAMING_MAX_LENGTH,
@@ -20,6 +25,23 @@ export const RenderingChoicesSchema = z
   .strict();
 
 export type RenderingChoices = z.infer<typeof RenderingChoicesSchema>;
+
+export const CoachClassificationSchema = z.strictObject({
+  signal: CoachSignalSchema,
+});
+
+export type CoachClassification = z.infer<typeof CoachClassificationSchema>;
+export { CoachSignalSchema, type CoachSignal };
+
+export const StoryCoachInputSchema = z.strictObject({
+  setup: z.string().max(BEAT_TEXT_MAX_LENGTH),
+  problem: z.string().max(BEAT_TEXT_MAX_LENGTH),
+  bigMoment: z.string().max(BEAT_TEXT_MAX_LENGTH),
+  ending: z.string().max(BEAT_TEXT_MAX_LENGTH),
+  previousSignal: CoachSignalSchema.optional(),
+});
+
+export type StoryCoachInput = z.infer<typeof StoryCoachInputSchema>;
 
 export const VisualInputSchema = z
   .object({
@@ -44,6 +66,7 @@ export interface GeneratedImage {
 export interface GenerationProvider {
   moderate(text: string): Promise<void>;
   chooseRendering(input: VisualInput): Promise<RenderingChoices>;
+  classifyStory(input: StoryCoachInput): Promise<CoachClassification>;
   generateHero(prompt: string): Promise<GeneratedImage>;
   generatePanel(referencePath: string, prompt: string): Promise<GeneratedImage>;
 }

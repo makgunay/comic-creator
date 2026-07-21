@@ -60,6 +60,16 @@ describe("PDF layout and rendering", () => {
     expect(command.height).toBeCloseTo(overlay.height * panel.artBox.height);
   });
 
+  it("does not draw local overlays over approved embedded lettering", () => {
+    const project = withApprovedPanels(makeProjectWithDialogue("Already embedded"));
+    const approved = project.panels[0]!.imageVersions.find(
+      (version) => version.id === project.panels[0]!.approvedImageVersionId,
+    )!;
+    approved.letteringMode = "embedded";
+
+    expect(buildPdfLayout(project)[0]!.panels[0]!.overlays).toEqual([]);
+  });
+
   it("preserves leading, repeated, and trailing ASCII spaces across soft wraps", () => {
     const authored = "  Two  spaces and trailing  ";
     const lines = wrapPdfParagraph(authored, (value) => value.length, 9);

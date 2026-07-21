@@ -137,6 +137,64 @@ describe("OpenAIGenerationProvider", () => {
     await expect(provider.chooseRendering(input)).rejects.toThrow();
   });
 
+  it("classifies story coaching with a signal-only structured response", async () => {
+    const client = createClient({
+      responses: {
+        parse: vi.fn().mockResolvedValue({
+          output_parsed: { signal: "big_moment_needs_choice" },
+          _request_id: "req_coach",
+        }),
+      },
+    });
+    const provider = new OpenAIGenerationProvider(config, { client, log: vi.fn() });
+    const story = {
+      setup: "Mira walks in the forest.",
+      problem: "Her dog runs away.",
+      bigMoment: "Mira follows the path.",
+      ending: "They are together again.",
+    };
+
+    await expect(provider.classifyStory(story)).resolves.toEqual({
+      signal: "big_moment_needs_choice",
+    });
+
+    const request = vi.mocked(client.responses.parse).mock.calls[0]?.[0];
+    expect(request).toMatchObject({
+      model: "gpt-5.6-luna",
+      reasoning: { effort: "low" },
+      input: [
+        expect.objectContaining({ role: "system" }),
+        { role: "user", content: JSON.stringify(story) },
+      ],
+    });
+    const systemPrompt = JSON.stringify(request?.input?.[0]);
+    expect(systemPrompt).toContain("A location alone means setup_needs_hero");
+    expect(systemPrompt).toContain("Use setup_needs_setting only when the setup includes a hero");
+    expect(JSON.stringify(request)).not.toMatch(/child-facing question|write a better|plotSuggestion/i);
+  });
+
+  it("rejects story-coach prose even when the provider returns a valid signal", async () => {
+    const client = createClient({
+      responses: {
+        parse: vi.fn().mockResolvedValue({
+          output_parsed: {
+            signal: "big_moment_needs_choice",
+            question: "Should a dragon arrive?",
+          },
+          _request_id: "req_coach_invalid",
+        }),
+      },
+    });
+    const provider = new OpenAIGenerationProvider(config, { client, log: vi.fn() });
+
+    await expect(provider.classifyStory({
+      setup: "A hero begins.",
+      problem: "Something changes.",
+      bigMoment: "The hero acts.",
+      ending: "It ends.",
+    })).rejects.toMatchObject({ code: "compiler_invariant" });
+  });
+
   it("rejects extra runtime fields before they can reach the rendering model", async () => {
     const client = createClient();
     const provider = new OpenAIGenerationProvider(config, { client, log: vi.fn() });

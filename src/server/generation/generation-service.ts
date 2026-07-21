@@ -9,8 +9,12 @@ import {
 } from "../../domain/project";
 import { ProjectStore } from "../storage/project-store";
 import {
+  CoachClassificationSchema,
   RenderingChoicesSchema,
+  StoryCoachInputSchema,
   VisualInputSchema,
+  type CoachClassification,
+  type CoachSignal,
   type GeneratedImage,
   type GenerationProvider,
   type VisualInput,
@@ -103,10 +107,33 @@ export class GenerationService {
     }
   }
 
+  async coachStory(
+    projectId: string,
+    previousSignal?: CoachSignal,
+  ): Promise<CoachClassification> {
+    return this.exclusive(projectId, async () => {
+      const project = ProjectSchema.parse(await this.store.load(projectId));
+      const textFor = (type: Project["beats"][number]["type"]) =>
+        project.beats.find((beat) => beat.type === type)!.childText;
+      const input = StoryCoachInputSchema.parse({
+        setup: textFor("setup"),
+        problem: textFor("problem"),
+        bigMoment: textFor("bigMoment"),
+        ending: textFor("ending"),
+        ...(previousSignal ? { previousSignal } : {}),
+      });
+      await this.provider.moderate(project.beats.map((beat) => beat.childText).join("\n"));
+      return CoachClassificationSchema.parse(
+        await this.provider.classifyStory(input),
+      );
+    });
+  }
+
   async generatePanel(
     projectId: string,
     panelId: string,
     revisionDirection: string,
+    embeddedLettering = false,
   ): Promise<Project> {
     return this.exclusive(projectId, async () => {
       const started = await this.store.mutate(projectId, (latest) => {
@@ -137,7 +164,13 @@ export class GenerationService {
           styleNotes: started.visualStyle.editedNotes,
           revisionDirection,
         });
-        await this.provider.moderate(Object.values(visualInput).join("\n"));
+        const lettering = embeddedLettering
+          ? panel.overlays.filter((overlay) => overlay.text.trim().length > 0)
+          : [];
+        await this.provider.moderate([
+          ...Object.values(visualInput),
+          ...lettering.map((overlay) => overlay.text),
+        ].join("\n"));
         const choices = await this.provider.chooseRendering(visualInput);
         let referencePath: string;
         try {
@@ -150,7 +183,7 @@ export class GenerationService {
         }
         const generated = await this.provider.generatePanel(
           referencePath,
-          buildImagePrompt(visualInput, choices),
+          buildImagePrompt(visualInput, choices, lettering),
         );
         return await this.publishAndMutate(projectId, generated, (latest, imageId) => {
           const latestPanel = findPanel(latest, panelId);
@@ -164,6 +197,7 @@ export class GenerationService {
               : {}),
             durationMs: generated.durationMs,
             childRevisionDirection: revisionDirection,
+            ...(lettering.length > 0 ? { letteringMode: "embedded" as const } : {}),
             status: "candidate",
           };
           return {

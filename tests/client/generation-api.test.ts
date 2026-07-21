@@ -5,6 +5,23 @@ import { makeProject } from "../fixtures/project-fixtures";
 describe("generation client API", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it("requests a signal-only story coaching classification", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ signal: "setup_needs_setting" }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const api = new ComicApiClient();
+
+    await expect(api.coachStory("project/id", {
+      previousSignal: "setup_needs_hero",
+    })).resolves.toEqual({ signal: "setup_needs_setting" });
+
+    expect(fetchMock.mock.calls[0]![0]).toBe("/api/projects/project%2Fid/coach");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]![1]?.body))).toEqual({
+      previousSignal: "setup_needs_hero",
+    });
+  });
+
   it("validates whole-project responses and URL-encodes every id", async () => {
     const project = makeProject();
     const fetchMock = vi.fn()

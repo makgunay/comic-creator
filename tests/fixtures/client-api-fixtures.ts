@@ -12,6 +12,7 @@ export function makeClientApi(project: Project, overrides: Partial<ComicApi> = {
     generateHero: vi.fn().mockResolvedValue({ project }),
     approveHero: vi.fn().mockResolvedValue({ project, heroReferenceChanged: false }),
     rejectHeroCandidate: vi.fn().mockResolvedValue({ project }),
+    coachStory: vi.fn().mockResolvedValue({ signal: "big_moment_needs_choice" }),
     generatePanel: vi.fn().mockResolvedValue({ project }),
     approvePanelVersion: vi.fn().mockResolvedValue({ project }),
     rejectPanelCandidate: vi.fn().mockResolvedValue({ project }),

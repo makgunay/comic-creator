@@ -54,9 +54,124 @@ describe("PanelCanvas", () => {
     fireEvent.change(screen.getByDisplayValue("Exact dialogue!"), { target: { value: "Byte-for-byte edit" } });
     expect(onOverlayChange).toHaveBeenCalledWith("d", "Byte-for-byte edit");
   });
+
+  it("centers short copy, compacts longer copy, and exposes remove controls", () => {
+    const panel = makePanel({
+      overlays: [
+        { id: "short", kind: "dialogue", text: "Hello!", x: .05, y: .05, width: .45, height: .2 },
+        { id: "long", kind: "dialogue", text: "First line\nSecond line\nThird line\nFourth line", x: .5, y: .05, width: .45, height: .2 },
+      ],
+    });
+    const onOverlayRemove = vi.fn();
+    render(
+      <PanelCanvas
+        panel={panel}
+        onOverlayChange={vi.fn()}
+        onOverlayRemove={onOverlayRemove}
+        onOverlayMove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Dialogue 1")).toHaveAttribute("rows", "1");
+    expect(screen.getByLabelText("Dialogue 1").closest(".text-overlay")).toHaveAttribute(
+      "data-text-density",
+      "roomy",
+    );
+    expect(screen.getByLabelText("Dialogue 2")).toHaveAttribute("rows", "4");
+    expect(screen.getByLabelText("Dialogue 2").closest(".text-overlay")).toHaveAttribute(
+      "data-text-density",
+      "compact",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Dialogue 1" }));
+    expect(onOverlayRemove).toHaveBeenCalledWith("short");
+  });
+
+  it("drags overlays in normalized coordinates and clamps them inside the art", () => {
+    const panel = makePanel({
+      overlays: [
+        { id: "d", kind: "dialogue", text: "Move me", x: .05, y: .05, width: .45, height: .2 },
+      ],
+    });
+    const onOverlayMove = vi.fn();
+    render(
+      <PanelCanvas
+        panel={panel}
+        onOverlayChange={vi.fn()}
+        onOverlayRemove={vi.fn()}
+        onOverlayMove={onOverlayMove}
+      />,
+    );
+    const canvas = screen.getByLabelText("Panel 1 preview");
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, top: 0, left: 0, right: 1000, bottom: 500,
+      width: 1000, height: 500, toJSON: () => ({}),
+    });
+    const handle = screen.getByRole("button", { name: "Move Dialogue 1" });
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 1200, clientY: 600 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 1200, clientY: 600 });
+
+    expect(onOverlayMove).toHaveBeenCalledWith("d", { x: .55, y: .8 });
+  });
+
+  it("hides duplicate local boxes for embedded lettering until editing is requested", async () => {
+    const panel = makePanel({
+      overlays: [
+        { id: "d", kind: "dialogue", text: "Already in the art", x: .05, y: .05, width: .45, height: .2 },
+      ],
+    });
+    const user = userEvent.setup();
+    render(
+      <PanelCanvas
+        panel={panel}
+        hasEmbeddedLettering
+        onOverlayChange={vi.fn()}
+        onOverlayRemove={vi.fn()}
+        onOverlayMove={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByDisplayValue("Already in the art")).not.toBeInTheDocument();
+    expect(screen.getByText(/artwork contains its own lettering/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit word boxes" }));
+    expect(screen.getByDisplayValue("Already in the art")).toBeInTheDocument();
+  });
 });
 
 describe("PanelWorkshop", () => {
+  it("reveals panel work in three child-friendly steps and delays revision controls", () => {
+    const approvedProject = makeProjectWithApprovedPanel();
+    const api = makeClientApi(approvedProject);
+    const view = render(<WorkshopHarness project={approvedProject} api={api} />);
+
+    expect(screen.getByRole("heading", { name: "1. Set the scene" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "2. Add your words" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "3. Draw and choose" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Make changes" })).toBeInTheDocument();
+    expect(screen.getByText(/follows your Setup moment/i)).toBeInTheDocument();
+
+    const firstDraft = structuredClone(approvedProject);
+    delete firstDraft.panels[0]!.approvedImageVersionId;
+    firstDraft.panels[0]!.imageVersions = [];
+    view.rerender(<WorkshopHarness key="first-draft" project={firstDraft} api={makeClientApi(firstDraft)} />);
+    expect(screen.queryByRole("heading", { name: "Make changes" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Quick visual changes" })).not.toBeInTheDocument();
+  });
+
+  it("keeps words-in-art as an advanced experiment without model jargon", async () => {
+    const project = makeProjectWithApprovedPanel();
+    project.panels[0]!.overlays = [
+      { id: "d", kind: "dialogue", text: "Exact words", x: .1, y: .1, width: .4, height: .2 },
+    ];
+    render(<WorkshopHarness project={project} api={makeClientApi(project)} />);
+
+    expect(screen.getByText("Try words inside the artwork").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByText(/GPT Image|model/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Panel 1 ready/)).toBeInTheDocument();
+  });
+
   it("sorts and navigates more than four panels with beat and Panel N of M labels", async () => {
     const project = makeEightPanelProject();
     project.panels.reverse();
@@ -83,15 +198,71 @@ describe("PanelWorkshop", () => {
     const panel = screen.getByLabelText("Panel 1 preview");
     expect(within(panel).getByLabelText("Dialogue 1")).toHaveValue("");
     expect(within(panel).getByLabelText("Caption 1")).toHaveValue("");
-    expect(within(panel).getByLabelText("Dialogue 1").closest("label")).toHaveStyle({
+    expect(within(panel).getByLabelText("Dialogue 1").closest(".text-overlay")).toHaveStyle({
       left: "6%",
       top: "6%",
       width: "48%",
     });
-    expect(within(panel).getByLabelText("Caption 1").closest("label")).toHaveStyle({
+    expect(within(panel).getByLabelText("Caption 1").closest(".text-overlay")).toHaveStyle({
       left: "8%",
       top: "76%",
       width: "84%",
+    });
+  });
+
+  it("removes dialogue and captions without disturbing the remaining boxes", async () => {
+    const project = makeProjectWithApprovedPanel();
+    project.panels[0]!.overlays = [
+      { id: "keep", kind: "dialogue", text: "Keep", x: .1, y: .1, width: .4, height: .2 },
+      { id: "remove", kind: "caption", text: "Remove", x: .1, y: .7, width: .8, height: .15 },
+    ];
+    const user = userEvent.setup();
+    render(<WorkshopHarness project={project} api={makeClientApi(project)} />);
+
+    await user.click(screen.getByRole("button", { name: "Remove Caption 1" }));
+    expect(screen.queryByDisplayValue("Remove")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Keep").closest(".text-overlay")).toHaveStyle({
+      left: "10%",
+      top: "10%",
+    });
+  });
+
+  it("offers child-friendly camera choices and maps legacy wide framing", async () => {
+    const project = makeProjectWithApprovedPanel();
+    project.panels[0]!.framing = "wide";
+    const user = userEvent.setup();
+    render(<WorkshopHarness project={project} api={makeClientApi(project)} />);
+
+    const camera = screen.getByRole("combobox", { name: "Camera view" });
+    expect(camera).toHaveDisplayValue("Whole scene");
+    expect(within(camera).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "Let the illustrator choose",
+      "Whole scene",
+      "Character and action",
+      "Face and feelings",
+      "Looking down",
+      "Looking up",
+    ]);
+    await user.selectOptions(camera, "face-and-feelings");
+    expect(camera).toHaveDisplayValue("Face and feelings");
+    expect(screen.getByText(/fill the panel with a face and expression/i)).toBeInTheDocument();
+  });
+
+  it("sends the lettering experiment only when exact authored words exist", async () => {
+    const project = makeProjectWithApprovedPanel();
+    project.panels[0]!.overlays = [
+      { id: "d", kind: "dialogue", text: "Exact words", x: .1, y: .1, width: .4, height: .2 },
+    ];
+    const generatePanel = vi.fn().mockResolvedValue({ project });
+    const user = userEvent.setup();
+    render(<WorkshopHarness project={project} api={makeClientApi(project, { generatePanel })} />);
+
+    await user.click(screen.getByText("Try words inside the artwork"));
+    await user.click(screen.getByRole("checkbox", { name: /letter my words inside the artwork/i }));
+    await user.click(screen.getByRole("button", { name: "Re-draw panel" }));
+    expect(generatePanel).toHaveBeenCalledWith(project.id, project.panels[0]!.id, {
+      revisionDirection: "",
+      embeddedLettering: true,
     });
   });
 
@@ -106,10 +277,10 @@ describe("PanelWorkshop", () => {
     await user.click(screen.getByRole("button", { name: "Add caption" }));
 
     const preview = screen.getByLabelText("Panel 1 preview");
-    const dialogue1 = within(preview).getByLabelText("Dialogue 1").closest("label")!;
-    const dialogue2 = within(preview).getByLabelText("Dialogue 2").closest("label")!;
-    const caption1 = within(preview).getByLabelText("Caption 1").closest("label")!;
-    const caption2 = within(preview).getByLabelText("Caption 2").closest("label")!;
+    const dialogue1 = within(preview).getByLabelText("Dialogue 1").closest(".text-overlay")!;
+    const dialogue2 = within(preview).getByLabelText("Dialogue 2").closest(".text-overlay")!;
+    const caption1 = within(preview).getByLabelText("Caption 1").closest(".text-overlay")!;
+    const caption2 = within(preview).getByLabelText("Caption 2").closest(".text-overlay")!;
     expect(dialogue1).toHaveStyle({ left: "4%", top: "6%", width: "44%" });
     expect(dialogue2).toHaveStyle({ left: "52%", top: "6%", width: "44%" });
     expect(caption1).toHaveStyle({ top: "64%", minHeight: "15%" });
@@ -300,8 +471,8 @@ describe("PanelWorkshop", () => {
     );
     await user.click(screen.getByRole("button", { name: "Next: Panel 2" }));
 
-    expect(screen.getByLabelText("Tell your illustrator what to change")).toHaveValue("");
-    expect(screen.getByRole("button", { name: "Night" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByLabelText("Tell your illustrator what to change")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Night" })).not.toBeInTheDocument();
     expect(screen.queryByText(/newest candidate is ready/i)).not.toBeInTheDocument();
   });
 

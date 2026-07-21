@@ -7,9 +7,11 @@ import { createProject } from "../../src/domain/project";
 import { paginatePanels } from "../../src/domain/pagination";
 import { renderComicPdf } from "../../src/server/export/pdf-renderer";
 import type {
+  CoachClassification,
   GeneratedImage,
   GenerationProvider,
   RenderingChoices,
+  StoryCoachInput,
   VisualInput,
 } from "../../src/server/generation/contracts";
 import { GenerationService } from "../../src/server/generation/generation-service";
@@ -88,6 +90,11 @@ class RecordingProvider implements GenerationProvider {
       palette: "cool",
       focus: "action",
     };
+  }
+
+  async classifyStory(input: StoryCoachInput): Promise<CoachClassification> {
+    this.calls.push(JSON.stringify(input));
+    return { signal: "ready" };
   }
 
   async generateHero(prompt: string): Promise<GeneratedImage> {

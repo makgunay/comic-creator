@@ -40,7 +40,14 @@ The child remains the author and director. GPT-5.6 may translate the child’s
 direction into constrained visual instructions, and an image model may
 illustrate it. AI must not invent plot, dialogue, captions, characters, or
 story events. Dialogue and captions are rendered locally as exact editable
-overlays.
+overlays by default. A clearly opt-in experiment may ask GPT Image 2 to letter
+only the child’s existing exact copy; the local text remains the editable source
+of truth and fallback.
+
+Guidance may structure the child's own ideas or ask one neutral reflective
+question. A model may classify which story element needs attention, but it must
+not generate the child-facing question, rewrite the child's text, or propose
+story content.
 
 ## Accepted Build Week journey
 
@@ -53,10 +60,9 @@ overlays.
 5. Approve or redirect candidate artwork without destructive replacement.
 6. View panels four per page and export a printable PDF.
 
-The Build Week version is a local browser app with a local server, local
-filesystem persistence, server-only API credentials, and bundled sample mode.
-It has no hosting, accounts, cloud database, payments, public sharing, or photo
-uploads.
+The application is a local browser app with a local server, local filesystem
+persistence, server-only API credentials, and bundled sample mode. It has no
+hosting, accounts, cloud database, payments, public sharing, or photo uploads.
 
 ## Build Week success scenario
 
@@ -68,10 +74,10 @@ The submission category is `Education`.
 
 ## Deliberate MVP boundary
 
-Same-device two-author mode is a stretch feature. The AI-finish experiment,
-full behavioral instrumentation, stock-character library, gallery, remixing,
-remote collaboration, accounts, parent dashboard, and additional export
-formats are deferred.
+The AI-finish experiment, full behavioral instrumentation, stock-character
+library, gallery, remixing, remote collaboration, accounts, parent dashboard,
+and additional export formats are deferred. Same-device pass-the-pen authorship
+is part of the guided creative-studio pass; it adds no accounts or sharing.
 
 See the approved
 [MVP design](superpowers/specs/2026-07-20-comic-creator-mvp-design.md) for the

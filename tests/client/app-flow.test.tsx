@@ -163,7 +163,8 @@ describe("App child flow", () => {
 
     await vi.waitFor(() => expect(saveProject).toHaveBeenCalled());
     await user.click(screen.getByRole("button", { name: "Premiere" }));
-    expect(screen.getAllByRole("article", { name: /Comic page/ })).toHaveLength(2);
+    expect(screen.getAllByRole("article", { name: /Comic page/ })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Next page" }));
     expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
   });
 

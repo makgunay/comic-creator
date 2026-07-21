@@ -2,9 +2,11 @@ import fs from "node:fs/promises";
 import sharp from "sharp";
 import type { Project } from "../../src/domain/project";
 import type {
+  CoachClassification,
   GeneratedImage,
   GenerationProvider,
   RenderingChoices,
+  StoryCoachInput,
   VisualInput,
 } from "../../src/server/generation/contracts";
 import { GenerationService } from "../../src/server/generation/generation-service";
@@ -46,6 +48,7 @@ export async function validPngBytes(): Promise<Buffer> {
 export class RecordingProvider implements GenerationProvider {
   readonly moderations: string[] = [];
   readonly visualInputs: VisualInput[] = [];
+  readonly coachInputs: StoryCoachInput[] = [];
   readonly heroPrompts: string[] = [];
   readonly panelPrompts: string[] = [];
   readonly references: string[] = [];
@@ -68,6 +71,11 @@ export class RecordingProvider implements GenerationProvider {
       palette: "cool",
       focus: "action",
     };
+  }
+
+  async classifyStory(input: StoryCoachInput): Promise<CoachClassification> {
+    this.coachInputs.push(structuredClone(input));
+    return { signal: "big_moment_needs_choice" };
   }
 
   async generateHero(prompt: string): Promise<GeneratedImage> {

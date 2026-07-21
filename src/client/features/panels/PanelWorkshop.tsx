@@ -9,6 +9,11 @@ import {
   type Project,
 } from "../../../domain/project";
 import {
+  CAMERA_PRESETS,
+  cameraPresetForFraming,
+  cameraPromptForPreset,
+} from "../../../domain/camera-presets";
+import {
   ComicApiError,
   type ComicApi,
   type GenerationConfigStatus,
@@ -165,6 +170,7 @@ export function PanelWorkshop({
   const [activeIndex, setActiveIndex] = useState(0);
   const [quickChange, setQuickChange] = useState("");
   const [customDirection, setCustomDirection] = useState("");
+  const [embeddedLettering, setEmbeddedLettering] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ tone: "info" | "error"; text: string }>();
   const mounted = useRef(false);
@@ -199,6 +205,7 @@ export function PanelWorkshop({
   useEffect(() => {
     setQuickChange("");
     setCustomDirection("");
+    setEmbeddedLettering(false);
     setNotice(undefined);
   }, [panel.id]);
 
@@ -243,6 +250,9 @@ export function PanelWorkshop({
   );
   const candidate = panel.imageVersions.filter((version) => version.status === "candidate").at(-1);
   const canvasVersion = approved ?? candidate;
+  const approvedPanelCount = project.panels.filter((item) => item.approvedImageVersionId).length;
+  const hasAuthoredLettering = panel.overlays.some((overlay) => overlay.text.trim().length > 0);
+  const selectedCamera = cameraPresetForFraming(panel.framing);
   const drawDisabled = busy
     || configStatus !== "enabled"
     || saveState !== "saved"
@@ -287,7 +297,12 @@ export function PanelWorkshop({
       const response = await request.api.generatePanel(
         request.projectId,
         request.panelId,
-        { revisionDirection },
+        {
+          revisionDirection,
+          ...(embeddedLettering && hasAuthoredLettering
+            ? { embeddedLettering: true }
+            : {}),
+        },
       );
       if (!isCurrentRequest(request)) return;
       if (!acceptServerProject(response.project)) {
@@ -350,11 +365,22 @@ export function PanelWorkshop({
               ? { imageUrl: api.imageUrl(project.id, canvasVersion.id) }
               : {})}
             disabled={busy}
+            hasEmbeddedLettering={canvasVersion?.letteringMode === "embedded"}
             onOverlayChange={(id, text) => updatePanel((current) => ({
               ...current,
               overlays: current.overlays.map((overlay) => overlay.id === id
                 ? { ...overlay, text }
                 : overlay),
+            }))}
+            onOverlayMove={(id, position) => updatePanel((current) => ({
+              ...current,
+              overlays: current.overlays.map((overlay) => overlay.id === id
+                ? { ...overlay, ...position }
+                : overlay),
+            }))}
+            onOverlayRemove={(id) => updatePanel((current) => ({
+              ...current,
+              overlays: current.overlays.filter((overlay) => overlay.id !== id),
             }))}
           />
           <p className="sr-only">
@@ -364,90 +390,147 @@ export function PanelWorkshop({
 
         <div className="panel-director">
           <h1 id="panel-title" tabIndex={-1}>Direct panel {activeIndex + 1}</h1>
-          <label>
-            What happens?
-            <textarea
-              value={panel.action}
-              disabled={busy}
-              maxLength={PANEL_ACTION_MAX_LENGTH}
-              onChange={(event) => updatePanel((current) => ({ ...current, action: event.target.value }))}
-            />
-          </label>
-          <label>
-            Where are they?
-            <input
-              value={panel.setting}
-              disabled={busy}
-              maxLength={PANEL_SETTING_MAX_LENGTH}
-              onChange={(event) => updatePanel((current) => ({ ...current, setting: event.target.value }))}
-            />
-          </label>
-          <div className="panel-field-grid">
-            <label>
-              Mood
-              <input
-                value={panel.mood}
-                disabled={busy}
-                maxLength={PANEL_MOOD_MAX_LENGTH}
-                onChange={(event) => updatePanel((current) => ({ ...current, mood: event.target.value }))}
-              />
-            </label>
-            <label>
-              Camera
-              <input
-                value={panel.framing}
-                disabled={busy}
-                maxLength={PANEL_FRAMING_MAX_LENGTH}
-                onChange={(event) => updatePanel((current) => ({ ...current, framing: event.target.value }))}
-              />
-            </label>
-          </div>
-          <div className="overlay-actions">
-            <button type="button" disabled={busy || panel.overlays.length >= MAX_OVERLAYS_PER_PANEL} onClick={() => addOverlay("dialogue")}>Add dialogue</button>
-            <button type="button" disabled={busy || panel.overlays.length >= MAX_OVERLAYS_PER_PANEL} onClick={() => addOverlay("caption")}>Add caption</button>
-          </div>
-          <div className="quick-changes" role="group" aria-label="Quick visual changes">
-            {quickChanges.map((change) => (
-              <button
-                type="button"
-                key={change}
-                disabled={busy}
-                aria-pressed={quickChange === change}
-                onClick={() => setQuickChange(change)}
-              >
-                {change}
-              </button>
-            ))}
-          </div>
-          <label>
-            Tell your illustrator what to change
-            <textarea
-              value={customDirection}
-              disabled={busy}
-              maxLength={CUSTOM_REVISION_MAX_LENGTH}
-              placeholder="e.g., move the kite higher, show more skyline…"
-              onChange={(event) => setCustomDirection(event.target.value)}
-            />
-          </label>
-          <button
-            className="button button-primary panel-draw-button"
-            type="button"
-            disabled={drawDisabled}
-            aria-describedby="panel-drawing-status"
-            onClick={generate}
-          >
-            {approved ? "Re-draw panel" : "Draw my panel"}
-          </button>
-          <p className="drawing-status" id="panel-drawing-status">{drawStatus}</p>
-          {notice ? (
-            <p
-              className={`drawing-notice drawing-notice-${notice.tone}`}
-              role={notice.tone === "error" ? "alert" : "status"}
-              aria-live={notice.tone === "error" ? "assertive" : "polite"}
-            >
-              {notice.text}
+          <p className="story-alignment-note">
+            <span aria-hidden="true">✓</span> This panel follows your {beat ? beatLabels[beat.type] : "Story"} moment.
+          </p>
+          {project.collaboration?.enabled ? (
+            <p className="active-author-note">
+              {(project.collaboration.authors[project.collaboration.activeAuthorIndex] || `Writer ${project.collaboration.activeAuthorIndex + 1}`)} is directing
             </p>
           ) : null}
+
+          <section className="panel-director-step" aria-labelledby="panel-scene-title">
+            <h2 id="panel-scene-title"><span aria-hidden="true">1</span><span className="sr-only">1.</span> Set the scene</h2>
+            <label>
+              What happens?
+              <textarea
+                value={panel.action}
+                disabled={busy}
+                maxLength={PANEL_ACTION_MAX_LENGTH}
+                onChange={(event) => updatePanel((current) => ({ ...current, action: event.target.value }))}
+              />
+            </label>
+            <label>
+              Where are they?
+              <input
+                value={panel.setting}
+                disabled={busy}
+                maxLength={PANEL_SETTING_MAX_LENGTH}
+                onChange={(event) => updatePanel((current) => ({ ...current, setting: event.target.value }))}
+              />
+            </label>
+            <div className="panel-field-grid">
+              <label>
+                Mood
+                <input
+                  value={panel.mood}
+                  disabled={busy}
+                  maxLength={PANEL_MOOD_MAX_LENGTH}
+                  onChange={(event) => updatePanel((current) => ({ ...current, mood: event.target.value }))}
+                />
+              </label>
+              <label>
+                Camera view
+                <select
+                  aria-label="Camera view"
+                  value={selectedCamera?.id ?? ""}
+                  disabled={busy}
+                  onChange={(event) => updatePanel((current) => ({
+                    ...current,
+                    framing: cameraPromptForPreset(event.target.value).slice(0, PANEL_FRAMING_MAX_LENGTH),
+                  }))}
+                >
+                  <option value="">Let the illustrator choose</option>
+                  {CAMERA_PRESETS.map((preset) => (
+                    <option value={preset.id} key={preset.id}>{preset.label}</option>
+                  ))}
+                </select>
+                <small className="camera-help">
+                  {selectedCamera?.help
+                    ?? (panel.framing.trim()
+                      ? "This saved camera note will still guide the illustrator. Choose a simple view to replace it."
+                      : "Choose how much of the scene the illustrator should show.")}
+                </small>
+              </label>
+            </div>
+          </section>
+
+          <section className="panel-director-step" aria-labelledby="panel-words-title">
+            <h2 id="panel-words-title"><span aria-hidden="true">2</span><span className="sr-only">2.</span> Add your words</h2>
+            <p>Write dialogue or captions, then move each box where it belongs on the art.</p>
+            <div className="overlay-actions">
+              <button type="button" disabled={busy || panel.overlays.length >= MAX_OVERLAYS_PER_PANEL} onClick={() => addOverlay("dialogue")}>Add dialogue</button>
+              <button type="button" disabled={busy || panel.overlays.length >= MAX_OVERLAYS_PER_PANEL} onClick={() => addOverlay("caption")}>Add caption</button>
+            </div>
+            <details className="lettering-details">
+              <summary>Try words inside the artwork</summary>
+              <label className="lettering-experiment">
+                <input
+                  type="checkbox"
+                  checked={embeddedLettering}
+                  disabled={busy || !hasAuthoredLettering}
+                  onChange={(event) => setEmbeddedLettering(event.target.checked)}
+                />
+                <span>
+                  <strong>Letter my words inside the artwork</strong>
+                  <small>Experimental: the illustrator will try to copy your exact words. Keep the saved word boxes so you can always edit them.</small>
+                </span>
+              </label>
+            </details>
+          </section>
+
+          {approved ? (
+            <section className="panel-director-step panel-revision-step" aria-labelledby="panel-revision-title">
+              <h2 id="panel-revision-title">Make changes</h2>
+              <p>Start with a quick choice or describe exactly what to change.</p>
+              <div className="quick-changes" role="group" aria-label="Quick visual changes">
+                {quickChanges.map((change) => (
+                  <button
+                    type="button"
+                    key={change}
+                    disabled={busy}
+                    aria-pressed={quickChange === change}
+                    onClick={() => setQuickChange(change)}
+                  >
+                    {change}
+                  </button>
+                ))}
+              </div>
+              <label>
+                Tell your illustrator what to change
+                <textarea
+                  value={customDirection}
+                  disabled={busy}
+                  maxLength={CUSTOM_REVISION_MAX_LENGTH}
+                  placeholder="e.g., move the kite higher, show more skyline…"
+                  onChange={(event) => setCustomDirection(event.target.value)}
+                />
+              </label>
+            </section>
+          ) : null}
+
+          <section className="panel-director-step panel-draw-step" aria-labelledby="panel-draw-title">
+            <h2 id="panel-draw-title"><span aria-hidden="true">3</span><span className="sr-only">3.</span> Draw and choose</h2>
+            <button
+              className="button button-primary panel-draw-button"
+              type="button"
+              disabled={drawDisabled}
+              aria-describedby="panel-drawing-status"
+              onClick={generate}
+            >
+              {approved ? "Re-draw panel" : "Draw my panel"}
+            </button>
+            <p className="drawing-status" id="panel-drawing-status">{drawStatus}</p>
+            {notice ? (
+              <p
+                className={`drawing-notice drawing-notice-${notice.tone}`}
+                role={notice.tone === "error" ? "alert" : "status"}
+                aria-live={notice.tone === "error" ? "assertive" : "polite"}
+              >
+                {notice.text}
+              </p>
+            ) : null}
+          </section>
         </div>
       </div>
 
@@ -460,6 +543,10 @@ export function PanelWorkshop({
         onUseVersion={(versionId) => void useServerAction(() =>
           api.approvePanelVersion(project.id, panel.id, versionId))}
       />
+
+      <p className="artifact-progress">
+        <span aria-hidden="true">✓</span> {approved ? `Panel ${activeIndex + 1} ready` : `Panel ${activeIndex + 1} in progress`} · {approvedPanelCount} of {panels.length} illustrated
+      </p>
 
       <nav className="panel-navigation" aria-label="Panel navigation">
         <button

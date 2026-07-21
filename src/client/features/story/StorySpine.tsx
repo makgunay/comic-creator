@@ -1,9 +1,20 @@
+import { useState } from "react";
 import {
   BEAT_TEXT_MAX_LENGTH,
+  COLLABORATOR_NAME_MAX_LENGTH,
   MAX_PANELS,
   addPanelToBeat,
   type Project,
 } from "../../../domain/project";
+import {
+  coachQuestionForSignal,
+  type CoachSignal,
+} from "../../../domain/story-coach";
+import {
+  ComicApiError,
+  type ComicApi,
+  type GenerationConfigStatus,
+} from "../../api/client";
 
 const labels = {
   setup: "Setup",
@@ -32,16 +43,134 @@ function BeatIcon({ type }: { type: keyof typeof labels }) {
 export function StorySpine({
   project,
   onChange,
+  api,
+  configStatus = "disabled",
 }: {
   project: Project;
   onChange: (project: Project) => void;
+  api?: ComicApi;
+  configStatus?: GenerationConfigStatus;
 }) {
+  const [coachSignal, setCoachSignal] = useState<CoachSignal>();
+  const [coachBusy, setCoachBusy] = useState(false);
+  const [coachHidden, setCoachHidden] = useState(false);
+  const [coachError, setCoachError] = useState<string>();
+  const coachEnabled = Boolean(api) && configStatus === "enabled";
+  const collaboration = project.collaboration ?? {
+    enabled: false,
+    authors: [project.localAuthorCredit.slice(0, COLLABORATOR_NAME_MAX_LENGTH), ""] as [string, string],
+    activeAuthorIndex: 0 as const,
+  };
+  const currentAuthor = collaboration.authors[collaboration.activeAuthorIndex].trim()
+    || `Writer ${collaboration.activeAuthorIndex + 1}`;
+  const otherAuthorIndex = collaboration.activeAuthorIndex === 0 ? 1 : 0;
+  const otherAuthor = collaboration.authors[otherAuthorIndex].trim()
+    || `Writer ${otherAuthorIndex + 1}`;
+  const completedBeats = project.beats.filter((beat) => beat.childText.trim()).length;
+
+  const updateAuthor = (index: 0 | 1, name: string) => {
+    const authors: [string, string] = [...collaboration.authors];
+    authors[index] = name;
+    const localAuthorCredit = authors.map((author) => author.trim()).filter(Boolean).join(" & ");
+    onChange({
+      ...project,
+      localAuthorCredit,
+      collaboration: { ...collaboration, authors },
+    });
+  };
+
+  const askCoach = async (previousSignal?: CoachSignal) => {
+    if (!api || !coachEnabled || coachBusy) return;
+    setCoachBusy(true);
+    setCoachHidden(false);
+    setCoachError(undefined);
+    try {
+      const result = await api.coachStory(project.id, {
+        ...(previousSignal ? { previousSignal } : {}),
+      });
+      setCoachSignal(result.signal);
+    } catch (error) {
+      setCoachError(error instanceof ComicApiError
+        ? error.payload.message
+        : "The coach could not finish that check. Your story is still safe.");
+    } finally {
+      setCoachBusy(false);
+    }
+  };
+
   return (
     <section className="screen-section story-screen" aria-labelledby="story-title">
       <header className="screen-heading">
         <h1 id="story-title" tabIndex={-1}>Build your story</h1>
         <p>You write the four moments. Your illustrator follows your lead.</p>
       </header>
+      <section className="pass-the-pen" aria-labelledby="pass-the-pen-title">
+        <div>
+          <p className="step-kicker">Optional</p>
+          <h2 id="pass-the-pen-title">Pass the pen</h2>
+          <p>Two writers can take turns on this device. No account or sharing needed.</p>
+        </div>
+        {!collaboration.enabled ? (
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => onChange({
+              ...project,
+              collaboration: { ...collaboration, enabled: true },
+            })}
+          >
+            Write with a friend
+          </button>
+        ) : (
+          <div className="pass-the-pen-controls">
+            <div className="writer-name-fields">
+              <label>
+                Writer 1
+                <input
+                  value={collaboration.authors[0]}
+                  maxLength={COLLABORATOR_NAME_MAX_LENGTH}
+                  onChange={(event) => updateAuthor(0, event.target.value)}
+                />
+              </label>
+              <label>
+                Writer 2
+                <input
+                  value={collaboration.authors[1]}
+                  maxLength={COLLABORATOR_NAME_MAX_LENGTH}
+                  onChange={(event) => updateAuthor(1, event.target.value)}
+                />
+              </label>
+            </div>
+            <div className="pen-handoff" aria-live="polite">
+              <strong>{currentAuthor} is writing</strong>
+              <button
+                type="button"
+                className="button button-primary button-small"
+                aria-label={`Pass the pen to ${otherAuthor}`}
+                onClick={() => onChange({
+                  ...project,
+                  collaboration: {
+                    ...collaboration,
+                    activeAuthorIndex: otherAuthorIndex,
+                  },
+                })}
+              >
+                Pass to {otherAuthor}
+              </button>
+              <button
+                type="button"
+                className="button-link"
+                onClick={() => onChange({
+                  ...project,
+                  collaboration: { ...collaboration, enabled: false },
+                })}
+              >
+                Write solo
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
       <div className="story-line" aria-hidden="true">
         <span /><span /><span /><span />
       </div>
@@ -92,6 +221,39 @@ export function StorySpine({
           );
         })}
       </div>
+      <section className="story-coach" aria-labelledby="story-coach-title">
+        <div className="story-coach-intro">
+          <h2 id="story-coach-title">Story Coach</h2>
+          <p>Your coach asks questions. You write every word.</p>
+        </div>
+        <button
+          className="button button-secondary story-coach-ask"
+          type="button"
+          disabled={!coachEnabled || coachBusy}
+          onClick={() => void askCoach()}
+        >
+          {coachBusy ? "Thinking of one question…" : "Ask for one question"}
+        </button>
+        {configStatus === "disabled" ? (
+          <p className="story-coach-mode">Add an API key to ask the AI coach.</p>
+        ) : null}
+        {coachError ? <p className="story-coach-error" role="alert">{coachError}</p> : null}
+        {coachSignal && !coachHidden ? (
+          <div className="story-coach-answer" role="status" aria-live="polite">
+            <p>{coachQuestionForSignal(coachSignal)}</p>
+            <div className="story-coach-actions">
+              <button type="button" onClick={() => setCoachSignal(undefined)}>I've got it</button>
+              <button type="button" disabled={coachBusy} onClick={() => void askCoach(coachSignal)}>
+                Ask another
+              </button>
+              <button type="button" onClick={() => setCoachHidden(true)}>Hide help</button>
+            </div>
+          </div>
+        ) : null}
+      </section>
+      <p className="artifact-progress">
+        <span aria-hidden="true">✓</span> Story plan ready · {completedBeats} of 4 moments written
+      </p>
     </section>
   );
 }

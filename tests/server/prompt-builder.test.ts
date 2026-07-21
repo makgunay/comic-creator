@@ -56,4 +56,24 @@ describe("buildImagePrompt", () => {
     expect(prompt).not.toContain("Child-requested visual change:");
     expect(prompt).not.toContain("undefined");
   });
+
+  it("adds exact quoted child lettering and placement only when explicitly provided", () => {
+    const prompt = buildImagePrompt(visualInput, renderingChoices, [
+      { id: "d", kind: "dialogue", text: "Wait — don't go!", x: .05, y: .1, width: .45, height: .2 },
+      { id: "c", kind: "caption", text: "Later that night…", x: .1, y: .75, width: .8, height: .15 },
+    ]);
+
+    expect(prompt).not.toContain("no written words");
+    expect(prompt).toContain(JSON.stringify("Wait — don't go!"));
+    expect(prompt).toContain(JSON.stringify("Later that night…"));
+    expect(prompt).toContain("exactly once");
+    expect(prompt).toContain("5% from the left");
+    expect(prompt).toContain("10% from the top");
+    expect(prompt).toContain("75% from the top");
+    expect(prompt).toContain("20% of the image height");
+    expect(prompt).toContain("15% of the image height");
+    expect(prompt).not.toContain("landscape-safe");
+    expect(prompt).not.toContain("between 20% and 80%");
+    expect(prompt).toContain("Do not add any other text");
+  });
 });

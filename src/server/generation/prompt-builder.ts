@@ -1,11 +1,34 @@
+import type { Project } from "../../domain/project";
 import type { RenderingChoices, VisualInput } from "./contracts";
+
+type TextOverlay = Project["panels"][number]["overlays"][number];
+
+function percentage(value: number): number {
+  return Math.round(value * 100);
+}
+
+function letteringInstructions(overlays: readonly TextOverlay[]): string[] {
+  if (overlays.length === 0) {
+    return [
+      "Create one square comic illustration with no written words, letters, speech bubbles, logos, or watermarks.",
+    ];
+  }
+  return [
+    "Create one square comic illustration and render only the child-authored lettering listed below.",
+    "Copy every quoted string verbatim, exactly once, with no missing or extra characters. Use clean, bold, highly legible comic lettering.",
+    ...overlays.map((overlay, index) =>
+      `${overlay.kind === "dialogue" ? "Speech bubble" : "Caption box"} ${index + 1}: ${JSON.stringify(overlay.text)}. Place it ${percentage(overlay.x)}% from the left and ${percentage(overlay.y)}% from the top of the square image; use about ${percentage(overlay.width)}% of the image width and ${percentage(overlay.height)}% of the image height.`),
+    "Do not add any other text, letters, logos, signatures, or watermarks.",
+  ];
+}
 
 export function buildImagePrompt(
   input: VisualInput,
   choices: RenderingChoices,
+  lettering: readonly TextOverlay[] = [],
 ): string {
   return [
-    "Create one square comic illustration with no written words, letters, speech bubbles, logos, or watermarks.",
+    ...letteringInstructions(lettering),
     `Hero continuity: ${input.heroDescription}`,
     `Preserve this action exactly: ${input.action}`,
     `Preserve this setting exactly: ${input.setting}`,

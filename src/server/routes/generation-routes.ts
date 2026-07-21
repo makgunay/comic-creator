@@ -4,6 +4,7 @@ import {
   PANEL_REVISION_MAX_LENGTH,
   type Project,
 } from "../../domain/project";
+import { CoachSignalSchema } from "../../domain/story-coach";
 import type { GenerationService } from "../generation/generation-service";
 import { toApiError } from "../generation/provider-errors";
 import type { ProjectStore } from "../storage/project-store";
@@ -11,6 +12,10 @@ import type { ProjectStore } from "../storage/project-store";
 const EmptyBodySchema = z.strictObject({});
 const PanelGenerationBodySchema = z.strictObject({
   revisionDirection: z.string().max(PANEL_REVISION_MAX_LENGTH),
+  embeddedLettering: z.boolean().default(false),
+});
+const CoachBodySchema = z.strictObject({
+  previousSignal: CoachSignalSchema.optional(),
 });
 const SAFE_ROUTE_ID = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,127}$/;
 type InvalidRouteCode =
@@ -116,6 +121,21 @@ export function createGenerationRouter(
 ) {
   const router = Router();
 
+  router.post("/projects/:projectId/coach", async (request, response) => {
+    try {
+      assertRouteId(request.params.projectId, "invalid_project_id");
+      const body = CoachBodySchema.parse(request.body ?? {});
+      response.set("cache-control", "no-store").json(
+        await requireService(service).coachStory(
+          request.params.projectId,
+          body.previousSignal,
+        ),
+      );
+    } catch (error) {
+      fail(response, error);
+    }
+  });
+
   router.post("/projects/:projectId/hero/generate", async (request, response) => {
     try {
       assertRouteId(request.params.projectId, "invalid_project_id");
@@ -170,6 +190,7 @@ export function createGenerationRouter(
           request.params.projectId,
           request.params.panelId,
           body.revisionDirection,
+          body.embeddedLettering,
         ),
       ));
     } catch (error) {

@@ -34,7 +34,9 @@ export function ImageVersionChooser({
             </div>
             <div>
               <strong>Current (approved)</strong>
-              <p>Your approved panel.</p>
+              <p>{approved.letteringMode === "embedded"
+                ? "Your approved panel with experimental lettering."
+                : "Your approved panel."}</p>
             </div>
           </article>
         ) : null}
@@ -45,7 +47,9 @@ export function ImageVersionChooser({
             </div>
             <div>
               <strong>Newest candidate</strong>
-              <p>{candidate.childRevisionDirection || "A new art-only version."}</p>
+              <p>{candidate.childRevisionDirection || (candidate.letteringMode === "embedded"
+                ? "A new version with experimental lettering."
+                : "A new art-only version.")}</p>
             </div>
           </article>
         ) : null}

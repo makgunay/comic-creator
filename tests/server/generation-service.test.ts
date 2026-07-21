@@ -19,6 +19,51 @@ async function entriesOrEmpty(directory: string): Promise<string[]> {
 }
 
 describe("GenerationService", () => {
+  it("coaches from only the four story beats after moderation", async () => {
+    const project = makeProjectWithApprovedPanel();
+    project.title = "PRIVATE TITLE";
+    project.localAuthorCredit = "PRIVATE CHILD NAME";
+    project.beats[0]!.childText = "Mira walks in the forest.";
+    project.beats[1]!.childText = "Her dog runs away.";
+    project.beats[2]!.childText = "Mira follows the path.";
+    project.beats[3]!.childText = "They find each other.";
+    project.panels[0]!.action = "PRIVATE PANEL DIRECTION";
+    const { service, provider } = await createGenerationHarness(project);
+
+    await expect(service.coachStory(project.id)).resolves.toEqual({
+      signal: "big_moment_needs_choice",
+    });
+
+    expect(provider.coachInputs).toEqual([{
+      setup: project.beats[0]!.childText,
+      problem: project.beats[1]!.childText,
+      bigMoment: project.beats[2]!.childText,
+      ending: project.beats[3]!.childText,
+    }]);
+    expect(provider.moderations).toEqual([
+      project.beats.map((beat) => beat.childText).join("\n"),
+    ]);
+    expect(JSON.stringify(provider.coachInputs)).not.toMatch(
+      /PRIVATE TITLE|PRIVATE CHILD NAME|PRIVATE PANEL DIRECTION/,
+    );
+  });
+
+  it("passes the prior coach signal without persisting a transcript", async () => {
+    const project = makeProjectWithApprovedPanel();
+    project.beats.forEach((beat, index) => {
+      beat.childText = `Beat ${index + 1}`;
+    });
+    const { service, provider, store } = await createGenerationHarness(project);
+    const before = await store.load(project.id);
+
+    await service.coachStory(project.id, "setup_needs_setting");
+
+    expect(provider.coachInputs[0]).toMatchObject({
+      previousSignal: "setup_needs_setting",
+    });
+    expect(await store.load(project.id)).toEqual(before);
+  });
+
   it("adds a panel candidate without replacing the approved image", async () => {
     const project = makeProjectWithApprovedPanel();
     const { service } = await createGenerationHarness(project);
@@ -33,6 +78,36 @@ describe("GenerationService", () => {
       sourceReferenceImageId: "hero-approved",
     });
     expect(panel.generationStatus).toBe("idle");
+  });
+
+  it("marks opt-in lettered candidates and sends only the current exact overlay copy", async () => {
+    const bytes = await validPngBytes();
+    const provider = new RecordingProvider(bytes);
+    const project = makeProjectWithApprovedPanel();
+    project.panels[0]!.overlays = [{
+      id: "dialogue",
+      kind: "dialogue",
+      text: "My exact line!",
+      x: .1,
+      y: .15,
+      width: .4,
+      height: .2,
+    }];
+    const { service } = await createGenerationHarness(project, provider);
+
+    const updated = await service.generatePanel(
+      project.id,
+      project.panels[0]!.id,
+      "",
+      true,
+    );
+
+    expect(updated.panels[0]!.imageVersions.at(-1)).toMatchObject({
+      status: "candidate",
+      letteringMode: "embedded",
+    });
+    expect(provider.panelPrompts[0]).toContain(JSON.stringify("My exact line!"));
+    expect(provider.moderations.join("\n")).toContain("My exact line!");
   });
 
   it("sends only VisualInput fields and omits every authored text sentinel", async () => {

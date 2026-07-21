@@ -25,7 +25,40 @@ describe("createProject", () => {
     ]);
     expect(project.panels).toHaveLength(4);
     expect(project.beats.every((beat) => beat.panelIds.length === 1)).toBe(true);
+    expect(project.hero.recipe).toEqual({
+      mode: "guided",
+      appearance: "",
+      outfit: "",
+      special: "",
+      personality: "",
+    });
+    expect(project.visualStyle.moods).toEqual([]);
+    expect(project.collaboration).toEqual({
+      enabled: false,
+      authors: ["M.", ""],
+      activeAuthorIndex: 0,
+    });
     expect(ProjectSchema.parse(project)).toEqual(project);
+  });
+
+  it("rejects malformed guided-creation state", () => {
+    const project = createProject({ title: "Guided", localAuthorCredit: "M." });
+
+    expect(ProjectSchema.safeParse({
+      ...project,
+      visualStyle: { ...project.visualStyle, moods: ["funny", "dreamy", "colorful"] },
+    }).success).toBe(false);
+    expect(ProjectSchema.safeParse({
+      ...project,
+      hero: {
+        ...project.hero,
+        recipe: { ...project.hero.recipe!, appearance: "x".repeat(301) },
+      },
+    }).success).toBe(false);
+    expect(ProjectSchema.safeParse({
+      ...project,
+      collaboration: { ...project.collaboration!, activeAuthorIndex: 2 },
+    }).success).toBe(false);
   });
 
   it("accepts relative image asset keys and rejects absolute paths", () => {
@@ -46,6 +79,24 @@ describe("createProject", () => {
       ...project,
       hero: { ...project.hero, imageVersions: [{ ...version, localPath: "/tmp/image-1.png" }] },
     })).toThrow();
+  });
+
+  it("accepts embedded lettering only on panel image versions", () => {
+    const project = createProject({ title: "Lettering", localAuthorCredit: "M." });
+    const panelVersion = {
+      id: "panel-lettered",
+      localPath: "images/panel-lettered.png",
+      createdAt: "2026-07-21T00:00:00.000Z",
+      childRevisionDirection: "",
+      status: "candidate" as const,
+      letteringMode: "embedded" as const,
+    };
+    project.panels[0]!.imageVersions = [panelVersion];
+    expect(ProjectSchema.safeParse(project).success).toBe(true);
+
+    project.panels[0]!.imageVersions = [];
+    project.hero.imageVersions = [panelVersion];
+    expect(ProjectSchema.safeParse(project).success).toBe(false);
   });
 
   it("accepts only safe relative image asset keys", () => {
@@ -262,6 +313,21 @@ describe("createProject", () => {
       status: "candidate",
     }];
     expect(ProjectSchema.safeParse(danglingPanelSource).success).toBe(false);
+  });
+
+  it("rejects overlays whose complete bounds leave the panel", () => {
+    const project = createProject({ title: "Bounds", localAuthorCredit: "M." });
+    project.panels[0]!.overlays = [{
+      id: "outside",
+      kind: "dialogue",
+      text: "No clipping",
+      x: .8,
+      y: .9,
+      width: .3,
+      height: .2,
+    }];
+
+    expect(ProjectSchema.safeParse(project).success).toBe(false);
   });
 
   it("allows panel continuity to reference retained rejected hero history", () => {

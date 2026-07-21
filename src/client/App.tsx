@@ -84,7 +84,14 @@ function ProjectWorkshop({
           onChange={(visualStyle) => update((current) => ({ ...current, visualStyle }))}
         />
       ) : null}
-      {step === "story" ? <StorySpine project={project} onChange={replaceProject} /> : null}
+      {step === "story" ? (
+        <StorySpine
+          project={project}
+          onChange={replaceProject}
+          api={api}
+          configStatus={configStatus}
+        />
+      ) : null}
       {step === "panels" ? (
         <PanelWorkshop
           project={project}

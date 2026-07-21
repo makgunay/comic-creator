@@ -3,6 +3,28 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("mobile panel navigation CSS", () => {
+  it("shows complete square panel art in the workshop and Premiere", async () => {
+    const css = await fs.readFile(
+      path.resolve("src/client/styles/app.css"),
+      "utf8",
+    );
+    const desktop = css.slice(0, css.indexOf("@media"));
+    const mobile = css.slice(
+      css.indexOf("@media (max-width: 760px)"),
+      css.indexOf("@media (prefers-reduced-motion: reduce)"),
+    );
+    const workshopFrame = desktop.match(/\.panel-canvas\s*\{([^}]*)\}/)?.[1] ?? "";
+    const workshopImage = desktop.match(/\.panel-canvas > img\s*\{([^}]*)\}/)?.[1] ?? "";
+    const premiereFrame = desktop.match(/\.comic-panel\s*\{([^}]*)\}/)?.[1] ?? "";
+    const premiereImage = desktop.match(/\.comic-panel > img\s*\{([^}]*)\}/)?.[1] ?? "";
+
+    expect(workshopFrame).toMatch(/aspect-ratio:\s*1(?:\s*\/\s*1)?\s*;/);
+    expect(workshopImage).toMatch(/object-fit:\s*contain/);
+    expect(premiereFrame).toMatch(/aspect-ratio:\s*1(?:\s*\/\s*1)?\s*;/);
+    expect(premiereImage).toMatch(/object-fit:\s*contain/);
+    expect(mobile).not.toMatch(/\.panel-canvas\s*\{[^}]*aspect-ratio/);
+  });
+
   it("caps the one-line desktop hero heading inside its narrow authoring column", async () => {
     const css = await fs.readFile(
       path.resolve("src/client/styles/app.css"),
@@ -37,5 +59,24 @@ describe("mobile panel navigation CSS", () => {
     expect(rules).toMatch(
       /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto\s+minmax\(0,\s*1fr\)/,
     );
+  });
+
+  it("keeps embedded-lettering tools stacked and touch-sized on mobile", async () => {
+    const css = await fs.readFile(
+      path.resolve("src/client/styles/app.css"),
+      "utf8",
+    );
+    const mobile = css.slice(
+      css.indexOf("@media (max-width: 760px)"),
+      css.indexOf("@media (prefers-reduced-motion: reduce)"),
+    );
+    const toolbar = mobile.match(/\.embedded-lettering-tools\s*\{([^}]*)\}/)?.[1] ?? "";
+    const button = mobile.match(/\.embedded-lettering-tools button\s*\{([^}]*)\}/)?.[1] ?? "";
+    const overlayText = mobile.match(/\.text-overlay textarea\s*\{([^}]*)\}/)?.[1] ?? "";
+
+    expect(toolbar).toMatch(/flex-direction:\s*column/);
+    expect(button).toMatch(/min-height:\s*44px/);
+    expect(overlayText).toMatch(/font-size:\s*clamp\(\.68rem,\s*3\.2vw,\s*\.84rem\)/);
+    expect(overlayText).toMatch(/padding:\s*3px 7px/);
   });
 });

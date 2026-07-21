@@ -51,36 +51,77 @@ early feasibility gate.
 
 ### 3. Build and validate the MVP — complete
 
-- [x] Close the final specification gaps in hero visual compilation and
-  metadata-only provider model diagnostics.
-- [x] Complete Task 6 generation, approval, exact-overlay, and panel-workshop scope.
-- [x] Complete Task 7 read-only Premiere, pagination, approved-only PDF export,
-  guarded progressive download UX, deterministic tests, responsive browser QA,
-  recoverable-failure proof, and rendered-PDF inspection.
-- [x] Pass task-scoped Task 7 specification and quality review.
-- [x] Implement the complete core journey.
-- [x] Validate the deterministic and functional happy path and important
-  failure states.
-- [x] Test setup from tracked files with Node 26, including production-only
-  Sharp installation and the full deterministic verification command.
-- [x] Perform manual product, accessibility, PDF, and visual QA.
-- [x] Keep README, notices, and project state aligned with verified behavior.
-- [x] Revalidate the final no-key add-panel journey at 1440, 1024, and 390
-  pixel widths in the in-app browser, including saved-project reload, panel
-  direction, five-panel navigation, and Premiere page 2.
-- [x] Verify loading, safety-refusal, and retryable-failure states with a
-  deterministic local provider, including preservation of approved artwork,
-  recovered retry controls, retained direction, responsive refusal layout,
-  and a clean browser console.
-- [x] Resolve D-007 acceptance with the user through D-010: the target is
-  revised to 40 seconds after Task 8 measured 26.049, 27.737, 28.654, 35.641,
-  36.151, and 38.477 seconds; none of the six observed panel samples exceeded
-  40 seconds.
+- [x] Implement the complete generation, approval, overlay, Premiere, PDF, and
+  filesystem-resume journey with metadata-only provider diagnostics.
+- [x] Validate happy paths, recoverable failures, refusal handling, responsive
+  behavior, accessibility, rendered PDFs, and clean tracked-file setup.
+- [x] Revalidate no-key sample and multi-page journeys at desktop, tablet, and
+  390 px widths with a clean browser console.
+- [x] Accept D-010's 40-second observed panel target after all six Task 8
+  samples completed within it.
 
 Functional and latency acceptance pass: a judge can run the project and
 reproduce the sample demo, and the revised 40-second observed panel target
 passes. Planned implementation and deterministic correction work is complete;
 Checkpoint 3 is closed.
+
+### 3.1. Panel-workshop feedback polish — complete
+
+- [x] Vertically center short overlay text and fit longer dialogue without
+  hiding authored words.
+- [x] Let children remove and drag dialogue and caption boxes while preserving
+  normalized, in-bounds geometry through save, Premiere, and PDF.
+- [x] Replace the free-form camera field with simple child-facing choices that
+  compile to GPT Image 2 framing and viewpoint language.
+- [x] Add an opt-in GPT Image 2 lettering experiment that uses exact authored
+  overlay copy, marks the resulting image version, and never double-renders
+  local text.
+- [x] Add malformed-input, interaction, prompt, persistence, Premiere, and PDF
+  coverage, then verify the live browser at desktop and mobile widths.
+
+Acceptance: local lettering is easier to edit and place, camera direction is
+understandable without photography knowledge, and experimental embedded
+lettering can be tried without losing the exact local source text or confusing
+it with the default exact-overlay workflow.
+
+### 3.2. Uncropped browser panels — complete
+
+- [x] Resize the panel workshop art frame to the square source image instead of
+  cropping the image into a landscape box.
+- [x] Preserve the complete square artwork in Premiere so approval and final
+  presentation show the same composition.
+- [x] Remove obsolete landscape-safe lettering-coordinate translation.
+- [x] Add regression coverage and verify the saved project at desktop and
+  mobile widths.
+
+Acceptance: approved square panel art is fully visible without cropping in the
+workshop and Premiere, and authored overlay geometry uses the same normalized
+coordinate system on screen, in generated lettering, and in the PDF.
+
+### 3.3. Guided creative studio — complete
+
+- [x] Replace the blank-page hero description with a structured, editable hero
+  recipe that preserves a freeform path and compiles only child-authored facts.
+- [x] Add simple style mood controls that refine the selected preset without
+  exposing model-facing prompt language.
+- [x] Add an on-demand AI Story Coach that classifies one missing narrative
+  element and maps it to a fixed neutral question; it must never invent or
+  rewrite plot, dialogue, captions, characters, or endings.
+- [x] Introduce artifact-based progress and same-device pass-the-pen authorship
+  without points, streaks, leaderboards, accounts, or public sharing.
+- [x] Make panel direction progressive: scene first, then words, then drawing,
+  with revision and advanced lettering controls revealed when relevant.
+- [x] Turn Premiere into a reliable celebratory presentation with complete
+  artwork, title/byline credit, page navigation, presentation mode, and PDF.
+- [x] Preserve the no-photo boundary and minimize coach requests to necessary
+  story text only, with moderation and no conversational transcript.
+- [x] Add deterministic malformed-output, authorship-invariant, persistence,
+  interaction, responsive, and accessibility coverage.
+
+Acceptance: a first-time child can create with progressively revealed guidance,
+ask an optional coach for one neutral question without surrendering authorship,
+share control with a same-device partner, direct and approve artwork, and reach
+a celebratory readable Premiere at desktop and mobile widths.
 
 ### 4. Prepare and submit — pending
 
@@ -96,10 +137,10 @@ and access paths have been checked independently.
 
 ## Guardrails for the current checkpoint
 
-- Execute each implementation task with a fresh implementer, TDD evidence, and
-  task-scoped specification and quality review before the next task.
-- Validate live reference-image consistency and latency before building the
-  full generation workflow.
-- Do not expand the documentation system unless a concrete retrieval failure
-  demonstrates the need.
-- Keep the demoable core journey ahead of secondary features.
+- Treat official Devpost requirements as authoritative over summaries.
+- Keep deterministic verification, live-app proof, and external submission
+  completion as separate claims.
+- Do not push, publish, grant access, upload media, or submit Devpost without
+  explicit user authorization.
+- Preserve the private-repository and local-first boundaries until the user
+  changes them.
