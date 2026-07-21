@@ -1,0 +1,368 @@
+import { randomUUID } from "node:crypto";
+import {
+  approveImageVersion,
+  letteringSnapshotForOverlays,
+} from "../../domain/image-versions";
+import {
+  MAX_HERO_IMAGE_VERSIONS,
+  MAX_PANEL_IMAGE_VERSIONS,
+  ProjectSchema,
+  type ImageVersion,
+  type Project,
+} from "../../domain/project";
+import { ProjectStore } from "../storage/project-store";
+import {
+  CoachClassificationSchema,
+  RenderingChoicesSchema,
+  StoryCoachInputSchema,
+  VisualInputSchema,
+  type CoachClassification,
+  type CoachSignal,
+  type GeneratedImage,
+  type GenerationProvider,
+  type VisualInput,
+} from "./contracts";
+import { buildHeroImagePrompt, buildImagePrompt } from "./prompt-builder";
+
+function codedError(code: string, message: string): Error & { code: string } {
+  return Object.assign(new Error(message), { code });
+}
+
+function touch(project: Project): Project {
+  return { ...project, updatedAt: new Date().toISOString() };
+}
+
+function findPanel(project: Project, panelId: string) {
+  const panel = project.panels.find((item) => item.id === panelId);
+  if (!panel) throw codedError("not_found", "Panel not found");
+  return panel;
+}
+
+function findVersion(
+  versions: readonly ImageVersion[],
+  versionId: string,
+  label: string,
+): ImageVersion {
+  const version = versions.find((item) => item.id === versionId);
+  if (!version) throw codedError("not_found", `${label} image not found`);
+  return version;
+}
+
+export interface HeroApprovalResult {
+  project: Project;
+  heroReferenceChanged: boolean;
+}
+
+export class GenerationService {
+  private readonly activeProjects = new Set<string>();
+
+  constructor(
+    private readonly store: ProjectStore,
+    private readonly provider: GenerationProvider,
+  ) {}
+
+  private async exclusive<T>(projectId: string, work: () => Promise<T>): Promise<T> {
+    if (this.activeProjects.has(projectId)) {
+      throw codedError("rate_limit", "Generation already active");
+    }
+    this.activeProjects.add(projectId);
+    try {
+      return await work();
+    } finally {
+      this.activeProjects.delete(projectId);
+    }
+  }
+
+  private async publishAndMutate(
+    projectId: string,
+    generated: GeneratedImage,
+    mutate: (project: Project, imageId: string) => Project,
+  ): Promise<Project> {
+    const imageId = randomUUID();
+    await this.store.publishImageAsset(projectId, imageId, generated.bytes);
+    try {
+      return await this.store.mutate(projectId, (latest) =>
+        ProjectSchema.parse(touch(mutate(latest, imageId))));
+    } catch (error) {
+      try {
+        await this.store.quarantineImageAsset(projectId, imageId);
+      } catch (cleanupError) {
+        throw new AggregateError(
+          [error, cleanupError],
+          "Project mutation and orphan recovery both failed",
+        );
+      }
+      throw error;
+    }
+  }
+
+  private async markPanelFailed(projectId: string, panelId: string): Promise<void> {
+    try {
+      await this.store.mutate(projectId, (latest) => touch({
+        ...latest,
+        panels: latest.panels.map((panel) => panel.id === panelId
+          ? { ...panel, generationStatus: "failed-retryable" as const }
+          : panel),
+      }));
+    } catch {
+      // Preserve the primary generation error. Storage recovery remains available
+      // through the previous valid document if this best-effort status write fails.
+    }
+  }
+
+  async coachStory(
+    projectId: string,
+    previousSignal?: CoachSignal,
+  ): Promise<CoachClassification> {
+    return this.exclusive(projectId, async () => {
+      const project = ProjectSchema.parse(await this.store.load(projectId));
+      const textFor = (type: Project["beats"][number]["type"]) =>
+        project.beats.find((beat) => beat.type === type)!.childText;
+      const input = StoryCoachInputSchema.parse({
+        setup: textFor("setup"),
+        problem: textFor("problem"),
+        bigMoment: textFor("bigMoment"),
+        ending: textFor("ending"),
+        ...(previousSignal ? { previousSignal } : {}),
+      });
+      await this.provider.moderate(project.beats.map((beat) => beat.childText).join("\n"));
+      return CoachClassificationSchema.parse(
+        await this.provider.classifyStory(input),
+      );
+    });
+  }
+
+  async generatePanel(
+    projectId: string,
+    panelId: string,
+    revisionDirection: string,
+    embeddedLettering = false,
+  ): Promise<Project> {
+    return this.exclusive(projectId, async () => {
+      const started = await this.store.mutate(projectId, (latest) => {
+        const panel = findPanel(latest, panelId);
+        if (!latest.hero.approvedReferenceImageId) {
+          throw codedError("invalid_input", "Approve a hero before drawing panels");
+        }
+        if (panel.imageVersions.length >= MAX_PANEL_IMAGE_VERSIONS) {
+          throw codedError("invalid_input", "This panel's artwork history is full");
+        }
+        return touch({
+          ...latest,
+          panels: latest.panels.map((item) => item.id === panel.id
+            ? { ...item, generationStatus: "generating" as const }
+            : item),
+        });
+      });
+
+      try {
+        const panel = findPanel(started, panelId);
+        const referenceId = started.hero.approvedReferenceImageId!;
+        const visualInput: VisualInput = VisualInputSchema.parse({
+          heroDescription: started.hero.childDescription,
+          action: panel.action,
+          setting: panel.setting,
+          mood: panel.mood,
+          framing: panel.framing,
+          styleNotes: started.visualStyle.editedNotes,
+          revisionDirection,
+        });
+        const lettering = embeddedLettering
+          ? panel.overlays.filter((overlay) => overlay.text.trim().length > 0)
+          : [];
+        await this.provider.moderate([
+          ...Object.values(visualInput),
+          ...lettering.map((overlay) => overlay.text),
+        ].join("\n"));
+        const choices = await this.provider.chooseRendering(visualInput);
+        let referencePath: string;
+        try {
+          referencePath = await this.store.resolveImageAsset(projectId, referenceId);
+        } catch {
+          throw codedError(
+            "reference_artwork",
+            "Approved hero artwork could not be read",
+          );
+        }
+        const generated = await this.provider.generatePanel(
+          referencePath,
+          buildImagePrompt(visualInput, choices, lettering),
+        );
+        return await this.publishAndMutate(projectId, generated, (latest, imageId) => {
+          const latestPanel = findPanel(latest, panelId);
+          const candidate: ImageVersion = {
+            id: imageId,
+            localPath: `images/${imageId}.png`,
+            createdAt: new Date().toISOString(),
+            sourceReferenceImageId: referenceId,
+            ...(generated.providerRequestId
+              ? { providerRequestId: generated.providerRequestId }
+              : {}),
+            durationMs: generated.durationMs,
+            childRevisionDirection: revisionDirection,
+            ...(lettering.length > 0 ? {
+              letteringMode: "embedded" as const,
+              letteringSnapshot: letteringSnapshotForOverlays(lettering),
+            } : {}),
+            status: "candidate",
+          };
+          return {
+            ...latest,
+            panels: latest.panels.map((item) => item.id === latestPanel.id
+              ? {
+                  ...latestPanel,
+                  generationStatus: "idle" as const,
+                  imageVersions: [...latestPanel.imageVersions, candidate],
+                }
+              : item),
+          };
+        });
+      } catch (error) {
+        await this.markPanelFailed(projectId, panelId);
+        throw error;
+      }
+    });
+  }
+
+  async generateHero(projectId: string): Promise<Project> {
+    return this.exclusive(projectId, async () => {
+      const started = await this.store.load(projectId);
+      if (!started.hero.childDescription.trim()) {
+        throw codedError("invalid_input", "Describe the hero before drawing");
+      }
+      if (started.hero.imageVersions.length >= MAX_HERO_IMAGE_VERSIONS) {
+        throw codedError("invalid_input", "This hero's artwork history is full");
+      }
+      const heroFacts = VisualInputSchema.parse({
+        heroDescription: started.hero.childDescription,
+        action: "",
+        setting: "",
+        mood: "",
+        framing: "full-body character reference",
+        styleNotes: started.visualStyle.editedNotes,
+        revisionDirection: "",
+      });
+      await this.provider.moderate([
+        heroFacts.heroDescription,
+        heroFacts.styleNotes,
+      ].join("\n"));
+      const choices = RenderingChoicesSchema.parse(
+        await this.provider.chooseRendering(heroFacts),
+      );
+      const generated = await this.provider.generateHero(
+        buildHeroImagePrompt(heroFacts, choices),
+      );
+      return this.publishAndMutate(projectId, generated, (latest, imageId) => ({
+        ...latest,
+        hero: {
+          ...latest.hero,
+          imageVersions: [
+            ...latest.hero.imageVersions,
+            {
+              id: imageId,
+              localPath: `images/${imageId}.png`,
+              createdAt: new Date().toISOString(),
+              ...(generated.providerRequestId
+                ? { providerRequestId: generated.providerRequestId }
+                : {}),
+              durationMs: generated.durationMs,
+              childRevisionDirection: "",
+              status: "candidate" as const,
+            },
+          ],
+        },
+      }));
+    });
+  }
+
+  async approveHero(projectId: string, imageId: string): Promise<HeroApprovalResult> {
+    let heroReferenceChanged = false;
+    const project = await this.store.mutate(projectId, (latest) => {
+      const selected = findVersion(latest.hero.imageVersions, imageId, "Hero");
+      if (selected.status === "rejected") {
+        throw codedError("invalid_input", "Rejected hero versions cannot be approved");
+      }
+      if (selected.status === "approved") return latest;
+      heroReferenceChanged = Boolean(
+        latest.hero.approvedReferenceImageId
+        && latest.hero.approvedReferenceImageId !== imageId,
+      );
+      return touch({
+        ...latest,
+        hero: {
+          ...latest.hero,
+          approvedReferenceImageId: imageId,
+          imageVersions: latest.hero.imageVersions.map((version) => ({
+            ...version,
+            status: version.id === imageId ? "approved" as const : "rejected" as const,
+          })),
+        },
+      });
+    });
+    return { project, heroReferenceChanged };
+  }
+
+  async rejectHeroCandidate(projectId: string, imageId: string): Promise<Project> {
+    return this.store.mutate(projectId, (latest) => {
+      const selected = findVersion(latest.hero.imageVersions, imageId, "Hero");
+      if (selected.status !== "candidate") {
+        throw codedError("invalid_input", "Only a hero candidate can be dismissed");
+      }
+      return touch({
+        ...latest,
+        hero: {
+          ...latest.hero,
+          imageVersions: latest.hero.imageVersions.map((version) => version.id === imageId
+            ? { ...version, status: "rejected" as const }
+            : version),
+        },
+      });
+    });
+  }
+
+  async approvePanelVersion(
+    projectId: string,
+    panelId: string,
+    versionId: string,
+  ): Promise<Project> {
+    return this.store.mutate(projectId, (latest) => {
+      const panel = findPanel(latest, panelId);
+      findVersion(panel.imageVersions, versionId, "Panel");
+      let approved;
+      try {
+        approved = approveImageVersion(panel, versionId);
+      } catch {
+        throw codedError("invalid_input", "Only a panel candidate can be approved");
+      }
+      return touch({
+        ...latest,
+        panels: latest.panels.map((item) => item.id === panelId ? approved : item),
+      });
+    });
+  }
+
+  async rejectPanelCandidate(
+    projectId: string,
+    panelId: string,
+    versionId: string,
+  ): Promise<Project> {
+    return this.store.mutate(projectId, (latest) => {
+      const panel = findPanel(latest, panelId);
+      const selected = findVersion(panel.imageVersions, versionId, "Panel");
+      if (selected.status !== "candidate") {
+        throw codedError("invalid_input", "Only a panel candidate can be dismissed");
+      }
+      return touch({
+        ...latest,
+        panels: latest.panels.map((item) => item.id === panelId
+          ? {
+              ...item,
+              imageVersions: item.imageVersions.map((version) => version.id === versionId
+                ? { ...version, status: "rejected" as const }
+                : version),
+            }
+          : item),
+      });
+    });
+  }
+}
