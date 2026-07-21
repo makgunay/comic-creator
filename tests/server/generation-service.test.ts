@@ -105,9 +105,65 @@ describe("GenerationService", () => {
     expect(updated.panels[0]!.imageVersions.at(-1)).toMatchObject({
       status: "candidate",
       letteringMode: "embedded",
+      letteringSnapshot: project.panels[0]!.overlays,
     });
     expect(provider.panelPrompts[0]).toContain(JSON.stringify("My exact line!"));
     expect(provider.moderations.join("\n")).toContain("My exact line!");
+  });
+
+  it("rejects approval when an embedded candidate no longer matches current words", async () => {
+    const project = makeProjectWithApprovedPanel();
+    const generatedOverlay = {
+      id: "dialogue",
+      kind: "dialogue" as const,
+      text: "Words sent to the artwork",
+      x: .1,
+      y: .15,
+      width: .4,
+      height: .2,
+    };
+    project.panels[0]!.overlays = [{
+      ...generatedOverlay,
+      text: "Words edited after drawing",
+    }];
+    Object.assign(project.panels[0]!.imageVersions[1]!, {
+      letteringMode: "embedded" as const,
+      letteringSnapshot: [generatedOverlay],
+    });
+    const { service, store } = await createGenerationHarness(project);
+
+    await expect(service.approvePanelVersion(
+      project.id,
+      project.panels[0]!.id,
+      "panel-candidate",
+    )).rejects.toMatchObject({ code: "invalid_input" });
+    expect((await store.load(project.id)).panels[0]).toMatchObject({
+      approvedImageVersionId: "approved-old",
+      overlays: [{ text: "Words edited after drawing" }],
+    });
+  });
+
+  it("rejects approval of a legacy embedded candidate without a source snapshot", async () => {
+    const project = makeProjectWithApprovedPanel();
+    project.panels[0]!.overlays = [{
+      id: "dialogue",
+      kind: "dialogue",
+      text: "Current exact words",
+      x: .1,
+      y: .15,
+      width: .4,
+      height: .2,
+    }];
+    project.panels[0]!.imageVersions[1]!.letteringMode = "embedded";
+    const { service, store } = await createGenerationHarness(project);
+
+    await expect(service.approvePanelVersion(
+      project.id,
+      project.panels[0]!.id,
+      "panel-candidate",
+    )).rejects.toMatchObject({ code: "invalid_input" });
+    expect((await store.load(project.id)).panels[0]!.approvedImageVersionId)
+      .toBe("approved-old");
   });
 
   it("sends only VisualInput fields and omits every authored text sentinel", async () => {

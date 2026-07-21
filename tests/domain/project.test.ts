@@ -99,6 +99,34 @@ describe("createProject", () => {
     expect(ProjectSchema.safeParse(project).success).toBe(false);
   });
 
+  it("round-trips embedded lettering snapshots and rejects them on art-only versions", () => {
+    const project = createProject({ title: "Lettering snapshot", localAuthorCredit: "M." });
+    const overlay = {
+      id: "dialogue-snapshot",
+      kind: "dialogue" as const,
+      text: "Exact saved words",
+      x: 0.1,
+      y: 0.2,
+      width: 0.4,
+      height: 0.2,
+    };
+    project.panels[0]!.overlays = [overlay];
+    project.panels[0]!.imageVersions = [{
+      id: "lettered-snapshot",
+      localPath: "images/lettered-snapshot.png",
+      createdAt: "2026-07-21T00:00:00.000Z",
+      childRevisionDirection: "",
+      letteringMode: "embedded",
+      letteringSnapshot: [overlay],
+      status: "candidate",
+    }];
+
+    expect(ProjectSchema.parse(project).panels[0]!.imageVersions[0]!.letteringSnapshot)
+      .toEqual([overlay]);
+    delete project.panels[0]!.imageVersions[0]!.letteringMode;
+    expect(ProjectSchema.safeParse(project).success).toBe(false);
+  });
+
   it("accepts only safe relative image asset keys", () => {
     const project = createProject({ title: "Nova and the Moon Kite", localAuthorCredit: "M." });
     const version = {

@@ -90,6 +90,7 @@ function ProjectWorkshop({
           onChange={replaceProject}
           api={api}
           configStatus={configStatus}
+          saveState={saveState}
         />
       ) : null}
       {step === "panels" ? (

@@ -6,11 +6,53 @@ import {
   MAX_GENERATED_IMAGE_BYTES,
   ProjectStore,
 } from "../../src/server/storage/project-store";
-import { makeProject } from "../fixtures/project-fixtures";
+import { hasStaleEmbeddedLettering } from "../../src/domain/image-versions";
+import { buildPdfLayout } from "../../src/server/export/pdf-layout";
+import { makeImageVersion, makeProject } from "../fixtures/project-fixtures";
 import { testTmpPath } from "../support/tmp-lifecycle";
 
 function testRoot(label: string): string {
   return testTmpPath(label);
+}
+
+function legacyEmbeddedProject() {
+  const project = makeProject();
+  const overlay = {
+    id: "legacy-dialogue",
+    kind: "dialogue" as const,
+    text: "Legacy exact words",
+    x: .1,
+    y: .15,
+    width: .4,
+    height: .2,
+  };
+  const version = makeImageVersion({
+    id: "legacy-embedded",
+    localPath: "images/legacy-embedded.png",
+    status: "approved",
+    letteringMode: "embedded",
+  });
+  const otherLegacyVersion = makeImageVersion({
+    id: "legacy-candidate",
+    localPath: "images/legacy-candidate.png",
+    status: "candidate",
+    letteringMode: "embedded",
+  });
+  project.panels[0]!.overlays = [
+    overlay,
+    {
+      id: "empty-caption",
+      kind: "caption",
+      text: "",
+      x: .1,
+      y: .7,
+      width: .8,
+      height: .15,
+    },
+  ];
+  project.panels[0]!.approvedImageVersionId = version.id;
+  project.panels[0]!.imageVersions = [version, otherLegacyVersion];
+  return project;
 }
 
 async function entriesOrEmpty(directory: string): Promise<string[]> {
@@ -33,6 +75,8 @@ function filesystemFailingRename(
     readFile: fs.readFile,
     writeFile: fs.writeFile,
     copyFile: fs.copyFile,
+    readdir: (directory: string, options: { withFileTypes: true }) =>
+      fs.readdir(directory, options),
     lstat: fs.lstat,
     realpath: fs.realpath,
     rename: async (source: string, target: string) => {
@@ -46,6 +90,76 @@ function filesystemFailingRename(
 }
 
 describe("ProjectStore", () => {
+  it("tolerates an EEXIST mkdir race only when a real directory won", async () => {
+    const root = testRoot("project-store-mkdir-race-directory");
+    let raced = false;
+    const fileSystem = {
+      ...filesystemFailingRename(() => false),
+      mkdir: async (directory: string, options?: { recursive?: boolean }) => {
+        if (!raced && directory === root) {
+          raced = true;
+          await fs.mkdir(directory, options);
+          throw Object.assign(new Error("Directory won the race"), {
+            code: "EEXIST",
+          });
+        }
+        return fs.mkdir(directory, options);
+      },
+    };
+    const store = new ProjectStore(root, fileSystem);
+
+    await expect(store.save(makeProject())).resolves.toBeUndefined();
+  });
+
+  it.each(["symlink", "file"] as const)(
+    "rejects an EEXIST mkdir race won by a %s",
+    async (winner) => {
+      const root = testRoot(`project-store-mkdir-race-${winner}`);
+      const outside = testRoot(`project-store-mkdir-race-${winner}-outside`);
+      const fileSystem = {
+        ...filesystemFailingRename(() => false),
+        mkdir: async (directory: string, options?: { recursive?: boolean }) => {
+          if (directory === root) {
+            await fs.mkdir(path.dirname(root), { recursive: true });
+            if (winner === "symlink") {
+              await fs.mkdir(outside, { recursive: true });
+              await fs.symlink(outside, root);
+            } else {
+              await fs.writeFile(root, "not a directory", "utf8");
+            }
+            throw Object.assign(new Error("Unsafe path won the race"), {
+              code: "EEXIST",
+            });
+          }
+          return fs.mkdir(directory, options);
+        },
+      };
+      const store = new ProjectStore(root, fileSystem);
+
+      await expect(store.save(makeProject())).rejects.toMatchObject({
+        code: "invalid_path",
+      });
+    },
+  );
+
+  it("preserves non-EEXIST mkdir errors", async () => {
+    const root = testRoot("project-store-mkdir-other-error");
+    const fileSystem = {
+      ...filesystemFailingRename(() => false),
+      mkdir: async () => {
+        throw Object.assign(new Error("Injected permission failure"), {
+          code: "EACCES",
+        });
+      },
+    };
+    const store = new ProjectStore(root, fileSystem);
+
+    await expect(store.save(makeProject())).rejects.toMatchObject({
+      code: "EACCES",
+      message: "Injected permission failure",
+    });
+  });
+
   it("creates and round-trips a schema-valid project", async () => {
     const store = new ProjectStore(testRoot("project-store-create"));
 
@@ -64,6 +178,62 @@ describe("ProjectStore", () => {
     await store.save(project);
 
     expect(await store.load(project.id)).toEqual(project);
+  });
+
+  it("hydrates and then persists a baseline snapshot for legacy embedded lettering", async () => {
+    const root = testRoot("project-store-legacy-lettering-hydration");
+    const store = new ProjectStore(root);
+    const project = legacyEmbeddedProject();
+    await store.save(project);
+
+    const loaded = await store.load(project.id);
+    const baseline = [project.panels[0]!.overlays[0]!];
+    expect(loaded.panels[0]!.imageVersions.map((version) => version.letteringSnapshot))
+      .toEqual([baseline, undefined]);
+    expect(loaded.panels[0]!.imageVersions[0]!.letteringSnapshot?.[0])
+      .not.toBe(loaded.panels[0]!.overlays[0]);
+
+    await store.save(loaded);
+    const persisted = JSON.parse(await fs.readFile(
+      path.join(root, "projects", project.id, "project.json"),
+      "utf8",
+    ));
+    expect(persisted.panels[0].imageVersions.map(
+      (version: { letteringSnapshot?: unknown }) => version.letteringSnapshot,
+    )).toEqual([baseline, undefined]);
+  });
+
+  it("detects a post-load legacy edit and excludes the stale embedded raster", async () => {
+    const store = new ProjectStore(testRoot("project-store-legacy-lettering-stale"));
+    const project = legacyEmbeddedProject();
+    await store.save(project);
+
+    const loaded = await store.load(project.id);
+    loaded.panels[0]!.overlays[0]!.x += .1;
+    const version = loaded.panels[0]!.imageVersions[0]!;
+
+    expect(hasStaleEmbeddedLettering(version, loaded.panels[0]!.overlays)).toBe(true);
+    expect(buildPdfLayout(loaded)[0]!.panels[0]!.approvedImageVersionId)
+      .toBeUndefined();
+  });
+
+  it("does not hydrate malformed embedded-lettering input into a valid project", async () => {
+    const root = testRoot("project-store-malformed-legacy-lettering");
+    const project = legacyEmbeddedProject();
+    const malformed = structuredClone(project) as unknown as {
+      panels: Array<{ imageVersions: Array<{ letteringSnapshot?: unknown }> }>;
+    };
+    malformed.panels[0]!.imageVersions[0]!.letteringSnapshot = "not-an-overlay-array";
+    const directory = path.join(root, "projects", project.id);
+    await fs.mkdir(directory, { recursive: true });
+    await fs.writeFile(
+      path.join(directory, "project.json"),
+      `${JSON.stringify(malformed)}\n`,
+      "utf8",
+    );
+    const store = new ProjectStore(root);
+
+    await expect(store.load(project.id)).rejects.toMatchObject({ code: "not_found" });
   });
 
   it("publishes only bounded 1024 by 1024 PNG artwork", async () => {

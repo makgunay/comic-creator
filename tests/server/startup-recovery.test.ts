@@ -7,6 +7,38 @@ import { makeProject } from "../fixtures/project-fixtures";
 import { testTmpPath } from "../support/tmp-lifecycle";
 
 describe("production startup recovery", () => {
+  it("reads project entries through the injected typed filesystem adapter", async () => {
+    const root = testTmpPath("startup-readdir-adapter");
+    const seedStore = new ProjectStore(root);
+    await seedStore.save(makeProject());
+    const calls: Array<{
+      directory: string;
+      options: { withFileTypes: true };
+    }> = [];
+    const fileSystem = {
+      mkdir: fs.mkdir,
+      readFile: fs.readFile,
+      writeFile: fs.writeFile,
+      copyFile: fs.copyFile,
+      rename: fs.rename,
+      lstat: fs.lstat,
+      realpath: fs.realpath,
+      readdir: async (directory: string, options: { withFileTypes: true }) => {
+        calls.push({ directory, options });
+        return fs.readdir(directory, options);
+      },
+    };
+    const restartedProcess = new ProjectStore(root, fileSystem);
+
+    await expect(restartedProcess.recoverInterruptedGenerations()).resolves.toBe(0);
+    expect(calls).toEqual([
+      {
+        directory: path.join(root, "projects"),
+        options: { withFileTypes: true },
+      },
+    ]);
+  });
+
   it("recovers interrupted panels only when startup recovery is invoked", async () => {
     const root = testTmpPath("startup-recovery");
     const firstProcess = new ProjectStore(root);

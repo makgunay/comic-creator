@@ -9,6 +9,19 @@ import {
 import { makeTestTmpDirectory } from "../support/tmp-lifecycle";
 
 describe("server config", () => {
+  it.each([undefined, "", "   \t  "])(
+    "treats an absent or blank OpenAI API key as disabled",
+    (apiKey) => {
+      expect(readConfig({ OPENAI_API_KEY: apiKey }).OPENAI_API_KEY).toBeUndefined();
+    },
+  );
+
+  it("preserves a non-empty OpenAI API key", () => {
+    expect(readConfig({ OPENAI_API_KEY: "test-key" }).OPENAI_API_KEY).toBe(
+      "test-key",
+    );
+  });
+
   it("uses only the required OpenAI models", () => {
     expect(readConfig({ OPENAI_API_KEY: "test-key" })).toMatchObject({
       OPENAI_TEXT_MODEL: "gpt-5.6-luna",

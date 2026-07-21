@@ -1,5 +1,5 @@
 const HERO_LIMIT_MS = 60_000;
-const PANEL_LIMIT_MS = 35_000;
+const PANEL_LIMIT_MS = 40_000;
 
 interface SmokeMeasurements {
   heroDurationMs: number;

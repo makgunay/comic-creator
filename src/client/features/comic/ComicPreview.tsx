@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type MouseEvent,
@@ -10,6 +11,10 @@ import {
 } from "../../api/client";
 import type { Project } from "../../../domain/project";
 import { paginatePanels } from "../../../domain/pagination";
+import {
+  hasStaleEmbeddedLettering,
+  hasUsableEmbeddedLettering,
+} from "../../../domain/image-versions";
 
 function ArrowIcon() {
   return (
@@ -38,10 +43,6 @@ function approvedImageVersion(panel: Project["panels"][number]) {
     : undefined;
 }
 
-function approvedImageId(panel: Project["panels"][number]): string | undefined {
-  return approvedImageVersion(panel)?.id;
-}
-
 export function ComicPreview({
   project,
   api,
@@ -62,6 +63,7 @@ export function ComicPreview({
   const [pageIndex, setPageIndex] = useState(0);
   const [presenting, setPresenting] = useState(false);
   const presentButton = useRef<HTMLButtonElement>(null);
+  const presentationDialog = useRef<HTMLDivElement>(null);
   const exitButton = useRef<HTMLButtonElement>(null);
   const wasPresenting = useRef(false);
   const mounted = useRef(false);
@@ -69,8 +71,10 @@ export function ComicPreview({
   const activeController = useRef<AbortController | undefined>(undefined);
   const currentProjectId = useRef(project.id);
   const currentApi = useRef(api);
-  currentProjectId.current = project.id;
-  currentApi.current = api;
+  useLayoutEffect(() => {
+    currentProjectId.current = project.id;
+    currentApi.current = api;
+  }, [api, project.id]);
 
   useEffect(() => {
     mounted.current = true;
@@ -98,11 +102,33 @@ export function ComicPreview({
 
   useEffect(() => {
     if (!presenting) return;
-    const exitOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPresenting(false);
+    const containPresentationFocus = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPresenting(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        presentationDialog.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable.at(-1)!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      } else if (!presentationDialog.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        first.focus();
+      }
     };
-    document.addEventListener("keydown", exitOnEscape);
-    return () => document.removeEventListener("keydown", exitOnEscape);
+    document.addEventListener("keydown", containPresentationFocus);
+    return () => document.removeEventListener("keydown", containPresentationFocus);
   }, [presenting]);
 
   async function downloadPdf(event: MouseEvent<HTMLAnchorElement>) {
@@ -194,8 +220,16 @@ export function ComicPreview({
     >
       <div className="comic-page-grid">
         {currentPanels.map((panel) => {
-          const imageId = approvedImageId(panel);
-          const hasEmbeddedLettering = approvedImageVersion(panel)?.letteringMode === "embedded";
+          const approvedVersion = approvedImageVersion(panel);
+          const staleEmbeddedLettering = hasStaleEmbeddedLettering(
+            approvedVersion,
+            panel.overlays,
+          );
+          const imageId = staleEmbeddedLettering ? undefined : approvedVersion?.id;
+          const hasEmbeddedLettering = hasUsableEmbeddedLettering(
+            approvedVersion,
+            panel.overlays,
+          );
           return (
             <section
               className="comic-panel"
@@ -209,7 +243,9 @@ export function ComicPreview({
                 />
               ) : (
                 <p className="comic-panel-placeholder">
-                  Approve artwork for this panel to include it in the comic.
+                  {staleEmbeddedLettering
+                    ? "Re-draw this panel after editing its word boxes before including the artwork."
+                    : "Approve artwork for this panel to include it in the comic."}
                 </p>
               )}
               {hasEmbeddedLettering ? (
@@ -335,7 +371,7 @@ export function ComicPreview({
       </p>
 
       {presenting ? (
-        <div className="comic-presentation" role="dialog" aria-modal="true" aria-label="Comic presentation">
+        <div ref={presentationDialog} className="comic-presentation" role="dialog" aria-modal="true" aria-label="Comic presentation">
           <header>
             <div>
               <strong>{project.title}</strong>

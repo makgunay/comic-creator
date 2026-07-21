@@ -60,6 +60,7 @@ export const ImageVersionSchema = z.object({
   durationMs: z.number().int().nonnegative().optional(),
   childRevisionDirection: z.string().max(PANEL_REVISION_MAX_LENGTH),
   letteringMode: z.literal("embedded").optional(),
+  letteringSnapshot: z.array(TextOverlaySchema).max(MAX_OVERLAYS_PER_PANEL).optional(),
   status: z.enum(["candidate", "approved", "rejected"]),
 }).superRefine((version, context) => {
   if (version.localPath !== `images/${version.id}.png`) {
@@ -67,6 +68,13 @@ export const ImageVersionSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["localPath"],
       message: "Image path must match its image version ID.",
+    });
+  }
+  if (version.letteringSnapshot !== undefined && version.letteringMode !== "embedded") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["letteringSnapshot"],
+      message: "Only embedded-lettering versions may store a lettering snapshot.",
     });
   }
 });

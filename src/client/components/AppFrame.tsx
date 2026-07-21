@@ -61,17 +61,15 @@ export function AppFrame({
           <span className="project-title">{title}</span>
         </div>
         <nav className="step-nav" aria-label="Comic workshop steps">
-          {steps.map((step, index) => {
-            const available = index <= 4;
-            return (
+          {steps.map((step, index) => (
               <button
                 className="step-button"
                 type="button"
                 key={step.id}
                 aria-label={step.label}
                 aria-current={step.id === currentStep ? "step" : undefined}
-                aria-disabled={!available || interactionLocked}
-                disabled={!available || interactionLocked}
+                aria-disabled={interactionLocked}
+                disabled={interactionLocked}
                 onClick={() => onStepChange(step.id)}
               >
                 <span className="step-number">{index + 1}</span>
@@ -83,8 +81,7 @@ export function AppFrame({
                   />
                 ) : null}
               </button>
-            );
-          })}
+          ))}
         </nav>
         <div className={`save-indicator save-${saveState}`} role="status" aria-live="polite">
           {saveState === "saved" ? <CheckIcon /> : <span className="save-dot" aria-hidden="true" />}

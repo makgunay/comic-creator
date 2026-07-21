@@ -2,17 +2,36 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+async function appCss(): Promise<string> {
+  return fs.readFile(path.resolve("src/client/styles/app.css"), "utf8");
+}
+
+function guardedCssRegion(
+  css: string,
+  startMarker: string | undefined,
+  endMarker: string,
+): string {
+  const start = startMarker === undefined ? 0 : css.indexOf(startMarker);
+  const end = css.indexOf(endMarker);
+  expect(start, `missing CSS start marker: ${startMarker ?? "start of file"}`)
+    .toBeGreaterThanOrEqual(0);
+  expect(end, `missing or out-of-order CSS end marker: ${endMarker}`)
+    .toBeGreaterThan(start);
+  return css.slice(start, end);
+}
+
+const desktopCss = (css: string) => guardedCssRegion(css, undefined, "@media");
+const mobileCss = (css: string) => guardedCssRegion(
+  css,
+  "@media (max-width: 760px)",
+  "@media (prefers-reduced-motion: reduce)",
+);
+
 describe("mobile panel navigation CSS", () => {
   it("shows complete square panel art in the workshop and Premiere", async () => {
-    const css = await fs.readFile(
-      path.resolve("src/client/styles/app.css"),
-      "utf8",
-    );
-    const desktop = css.slice(0, css.indexOf("@media"));
-    const mobile = css.slice(
-      css.indexOf("@media (max-width: 760px)"),
-      css.indexOf("@media (prefers-reduced-motion: reduce)"),
-    );
+    const css = await appCss();
+    const desktop = desktopCss(css);
+    const mobile = mobileCss(css);
     const workshopFrame = desktop.match(/\.panel-canvas\s*\{([^}]*)\}/)?.[1] ?? "";
     const workshopImage = desktop.match(/\.panel-canvas > img\s*\{([^}]*)\}/)?.[1] ?? "";
     const premiereFrame = desktop.match(/\.comic-panel\s*\{([^}]*)\}/)?.[1] ?? "";
@@ -26,12 +45,8 @@ describe("mobile panel navigation CSS", () => {
   });
 
   it("caps the one-line desktop hero heading inside its narrow authoring column", async () => {
-    const css = await fs.readFile(
-      path.resolve("src/client/styles/app.css"),
-      "utf8",
-    );
-    const desktopRule = css
-      .slice(0, css.indexOf("@media"))
+    const css = await appCss();
+    const desktopRule = desktopCss(css)
       .match(/\.hero-form-panel h1\s*\{([^}]*)\}/)?.[1] ?? "";
     const maximumRem = Number(
       desktopRule.match(
@@ -44,14 +59,7 @@ describe("mobile panel navigation CSS", () => {
   });
 
   it("keeps navigation after content in one non-sticky row", async () => {
-    const css = await fs.readFile(
-      path.resolve("src/client/styles/app.css"),
-      "utf8",
-    );
-    const mobile = css.slice(
-      css.indexOf("@media (max-width: 760px)"),
-      css.indexOf("@media (prefers-reduced-motion: reduce)"),
-    );
+    const mobile = mobileCss(await appCss());
     const rules = mobile.match(/\.panel-navigation\s*\{([^}]*)\}/)?.[1] ?? "";
 
     expect(rules).toMatch(/position:\s*static/);
@@ -62,14 +70,7 @@ describe("mobile panel navigation CSS", () => {
   });
 
   it("keeps embedded-lettering tools stacked and touch-sized on mobile", async () => {
-    const css = await fs.readFile(
-      path.resolve("src/client/styles/app.css"),
-      "utf8",
-    );
-    const mobile = css.slice(
-      css.indexOf("@media (max-width: 760px)"),
-      css.indexOf("@media (prefers-reduced-motion: reduce)"),
-    );
+    const mobile = mobileCss(await appCss());
     const toolbar = mobile.match(/\.embedded-lettering-tools\s*\{([^}]*)\}/)?.[1] ?? "";
     const button = mobile.match(/\.embedded-lettering-tools button\s*\{([^}]*)\}/)?.[1] ?? "";
     const overlayText = mobile.match(/\.text-overlay textarea\s*\{([^}]*)\}/)?.[1] ?? "";

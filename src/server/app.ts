@@ -54,6 +54,15 @@ export function createApp(
     createGenerationRouter(dependencies.generationService, dependencies.store),
   );
   app.use("/api", createExportRouter(dependencies.store));
+  app.use("/api", (_request, response) => {
+    response.status(404).set("cache-control", "no-store").json({
+      error: {
+        code: "not_found",
+        message: "API route not found.",
+        retryable: false,
+      },
+    });
+  });
   app.use((
     error: unknown,
     _request: express.Request,

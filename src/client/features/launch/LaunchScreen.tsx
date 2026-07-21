@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import {
   LOCAL_AUTHOR_CREDIT_MAX_LENGTH,
   PROJECT_TITLE_MAX_LENGTH,
@@ -32,7 +32,10 @@ export function LaunchScreen({
   const mounted = useRef(true);
   const requestId = useRef(0);
   const onOpenProjectRef = useRef(onOpenProject);
-  onOpenProjectRef.current = onOpenProject;
+
+  useLayoutEffect(() => {
+    onOpenProjectRef.current = onOpenProject;
+  }, [onOpenProject]);
 
   useEffect(() => {
     mounted.current = true;

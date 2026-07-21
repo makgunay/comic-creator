@@ -50,6 +50,40 @@ describe("approveImageVersion", () => {
     );
   });
 
+  it("rejects a snapshot-less embedded candidate while accepting an exact snapshot", () => {
+    const overlay = {
+      id: "dialogue",
+      kind: "dialogue" as const,
+      text: "Exact words",
+      x: .1,
+      y: .1,
+      width: .4,
+      height: .2,
+    };
+    const missing = makePanel({
+      overlays: [overlay],
+      imageVersions: [makeImageVersion({
+        id: "missing-snapshot",
+        localPath: "images/missing-snapshot.png",
+        letteringMode: "embedded",
+      })],
+    });
+    expect(() => approveImageVersion(missing, "missing-snapshot"))
+      .toThrow("Embedded lettering has no source snapshot: missing-snapshot");
+
+    const matching = makePanel({
+      overlays: [overlay],
+      imageVersions: [makeImageVersion({
+        id: "matching-snapshot",
+        localPath: "images/matching-snapshot.png",
+        letteringMode: "embedded",
+        letteringSnapshot: [overlay],
+      })],
+    });
+    expect(approveImageVersion(matching, "matching-snapshot").approvedImageVersionId)
+      .toBe("matching-snapshot");
+  });
+
   it("rejects a malformed panel with duplicate image version IDs", () => {
     const panel = makePanel({
       imageVersions: [

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   CUSTOM_REVISION_MAX_LENGTH,
   MAX_OVERLAYS_PER_PANEL,
@@ -21,6 +21,7 @@ import {
 import type { SaveState } from "../../state/use-project";
 import { PanelCanvas } from "./PanelCanvas";
 import { ImageVersionChooser } from "./ImageVersionChooser";
+import { isEmbeddedLettering } from "../../../domain/image-versions";
 
 type TextOverlay = Project["panels"][number]["overlays"][number];
 
@@ -177,8 +178,10 @@ export function PanelWorkshop({
   const requestIdentity = useRef(0);
   const currentProjectId = useRef(project.id);
   const currentApi = useRef(api);
-  currentProjectId.current = project.id;
-  currentApi.current = api;
+  useLayoutEffect(() => {
+    currentProjectId.current = project.id;
+    currentApi.current = api;
+  }, [api, project.id]);
   const panel = panels[Math.min(activeIndex, panels.length - 1)]!;
   const beat = project.beats.find((item) => item.id === panel.beatId);
 
@@ -365,7 +368,7 @@ export function PanelWorkshop({
               ? { imageUrl: api.imageUrl(project.id, canvasVersion.id) }
               : {})}
             disabled={busy}
-            hasEmbeddedLettering={canvasVersion?.letteringMode === "embedded"}
+            hasEmbeddedLettering={isEmbeddedLettering(canvasVersion)}
             onOverlayChange={(id, text) => updatePanel((current) => ({
               ...current,
               overlays: current.overlays.map((overlay) => overlay.id === id

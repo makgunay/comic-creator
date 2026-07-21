@@ -11,11 +11,14 @@ import {
   type PDFPageDrawTextOptions,
 } from "pdf-lib";
 import type { Project } from "../../domain/project";
+import { hasStaleEmbeddedLettering } from "../../domain/image-versions";
 import { PdfExportError } from "./export-error";
 import { buildPdfLayout, PDF_PAGE, type PdfOverlayLayout } from "./pdf-layout";
 
 const missingApprovalMessage =
   "Approve artwork for every panel before downloading the PDF.";
+const staleEmbeddedLetteringMessage =
+  "Re-draw panels after editing their word boxes before downloading the PDF.";
 const unsupportedGlyphMessage =
   "This comic uses a character the PDF cannot print yet. Change that character and try again.";
 const textOverflowMessage =
@@ -195,6 +198,9 @@ function approvedVersionIds(project: Project): string[] {
         || version.localPath !== `images/${id}.png`
       ) {
         throw new PdfExportError(missingApprovalMessage);
+      }
+      if (hasStaleEmbeddedLettering(version, panel.overlays)) {
+        throw new PdfExportError(staleEmbeddedLetteringMessage);
       }
       return id;
     });

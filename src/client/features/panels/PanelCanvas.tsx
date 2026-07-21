@@ -197,7 +197,7 @@ export function PanelCanvas({
       </div>
       {hasEmbeddedLettering ? (
         <div className="embedded-lettering-tools">
-          <span>Artwork contains its own lettering.</span>
+          <span>Artwork contains its own lettering. Edit word boxes, then re-draw to update the artwork.</span>
           <button
             type="button"
             disabled={disabled}

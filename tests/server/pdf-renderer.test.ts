@@ -66,8 +66,42 @@ describe("PDF layout and rendering", () => {
       (version) => version.id === project.panels[0]!.approvedImageVersionId,
     )!;
     approved.letteringMode = "embedded";
+    approved.letteringSnapshot = structuredClone(project.panels[0]!.overlays);
 
     expect(buildPdfLayout(project)[0]!.panels[0]!.overlays).toEqual([]);
+  });
+
+  it("excludes stale embedded artwork and refuses to export its raster", async () => {
+    const project = withApprovedPanels(makeProjectWithDialogue("Move me"));
+    const approved = project.panels[0]!.imageVersions.find(
+      (version) => version.id === project.panels[0]!.approvedImageVersionId,
+    )!;
+    approved.letteringMode = "embedded";
+    approved.letteringSnapshot = structuredClone(project.panels[0]!.overlays);
+    project.panels[0]!.overlays[0]!.x += 0.1;
+
+    const layout = buildPdfLayout(project)[0]!.panels[0]!;
+    expect(layout.approvedImageVersionId).toBeUndefined();
+    expect(layout.overlays[0]?.text).toBe("Move me");
+
+    const resolveImage = vi.fn(async () => fixturePng());
+    await expect(renderComicPdf(project, resolveImage)).rejects.toMatchObject({
+      code: "export",
+      message: "Re-draw panels after editing their word boxes before downloading the PDF.",
+    });
+    expect(resolveImage).not.toHaveBeenCalled();
+  });
+
+  it("keeps legacy embedded artwork and suppresses duplicate local overlays", () => {
+    const project = withApprovedPanels(makeProjectWithDialogue("Legacy lettering"));
+    const approved = project.panels[0]!.imageVersions.find(
+      (version) => version.id === project.panels[0]!.approvedImageVersionId,
+    )!;
+    approved.letteringMode = "embedded";
+
+    const layout = buildPdfLayout(project)[0]!.panels[0]!;
+    expect(layout.approvedImageVersionId).toBe(approved.id);
+    expect(layout.overlays).toEqual([]);
   });
 
   it("preserves leading, repeated, and trailing ASCII spaces across soft wraps", () => {

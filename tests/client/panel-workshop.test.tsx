@@ -172,6 +172,32 @@ describe("PanelWorkshop", () => {
     expect(screen.getByText(/Panel 1 ready/)).toBeInTheDocument();
   });
 
+  it("keeps stale embedded art distinct and asks for a redraw after word-box edits", async () => {
+    const project = makeProjectWithApprovedPanel();
+    const generatedOverlay = {
+      id: "d",
+      kind: "dialogue" as const,
+      text: "Words inside the art",
+      x: .1,
+      y: .1,
+      width: .4,
+      height: .2,
+    };
+    project.panels[0]!.overlays = [{ ...generatedOverlay, text: "Edited exact words" }];
+    Object.assign(project.panels[0]!.imageVersions[0]!, {
+      letteringMode: "embedded" as const,
+      letteringSnapshot: [generatedOverlay],
+    });
+    const user = userEvent.setup();
+    render(<WorkshopHarness project={project} api={makeClientApi(project)} />);
+
+    expect(screen.queryByDisplayValue("Edited exact words")).not.toBeInTheDocument();
+    expect(screen.getByText(/artwork contains its own lettering/i)).toBeInTheDocument();
+    expect(screen.getByText(/edit.*re-draw/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Edit word boxes" }));
+    expect(screen.getByDisplayValue("Edited exact words")).toBeInTheDocument();
+  });
+
   it("sorts and navigates more than four panels with beat and Panel N of M labels", async () => {
     const project = makeEightPanelProject();
     project.panels.reverse();

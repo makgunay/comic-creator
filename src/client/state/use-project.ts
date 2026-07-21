@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef } from "react";
 import type { Project } from "../../domain/project";
 import { comicApi, type ComicApi } from "../api/client";
 
@@ -80,10 +80,13 @@ export function useProject(projectId: string, api: ComicApi = comicApi) {
   const latestSaveState = useRef<SaveState>(state.saveState);
   const latestEditRevision = useRef(state.editRevision);
   const activeProjectId = useRef(projectId);
-  activeProjectId.current = projectId;
-  latestProject.current = state.project;
-  latestSaveState.current = state.saveState;
-  latestEditRevision.current = state.editRevision;
+
+  useLayoutEffect(() => {
+    activeProjectId.current = projectId;
+    latestProject.current = state.project;
+    latestSaveState.current = state.saveState;
+    latestEditRevision.current = state.editRevision;
+  }, [projectId, state.editRevision, state.project, state.saveState]);
 
   const clearTimer = useCallback(() => {
     if (timer.current !== undefined) {

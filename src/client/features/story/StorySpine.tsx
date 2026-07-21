@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   BEAT_TEXT_MAX_LENGTH,
   COLLABORATOR_NAME_MAX_LENGTH,
@@ -15,6 +15,7 @@ import {
   type ComicApi,
   type GenerationConfigStatus,
 } from "../../api/client";
+import type { SaveState } from "../../state/use-project";
 
 const labels = {
   setup: "Setup",
@@ -45,17 +46,52 @@ export function StorySpine({
   onChange,
   api,
   configStatus = "disabled",
+  saveState,
 }: {
   project: Project;
   onChange: (project: Project) => void;
   api?: ComicApi;
   configStatus?: GenerationConfigStatus;
+  saveState: SaveState;
 }) {
   const [coachSignal, setCoachSignal] = useState<CoachSignal>();
   const [coachBusy, setCoachBusy] = useState(false);
   const [coachHidden, setCoachHidden] = useState(false);
   const [coachError, setCoachError] = useState<string>();
-  const coachEnabled = Boolean(api) && configStatus === "enabled";
+  const coachRequestIdentity = useRef(0);
+  const coachMounted = useRef(false);
+  const currentCoachApi = useRef(api);
+  const currentCoachProjectId = useRef(project.id);
+  const storySnapshot = JSON.stringify(project.beats.map((beat) => beat.childText));
+  const currentStorySnapshot = useRef(storySnapshot);
+  const currentSaveState = useRef(saveState);
+  const coachEnabled = Boolean(api) && configStatus === "enabled" && saveState === "saved";
+
+  useEffect(() => {
+    coachMounted.current = true;
+    return () => {
+      coachMounted.current = false;
+      coachRequestIdentity.current += 1;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const storyChanged = currentStorySnapshot.current !== storySnapshot;
+    const contextChanged = currentCoachApi.current !== api
+      || currentCoachProjectId.current !== project.id
+      || storyChanged
+      || currentSaveState.current !== saveState;
+    currentCoachApi.current = api;
+    currentCoachProjectId.current = project.id;
+    currentStorySnapshot.current = storySnapshot;
+    currentSaveState.current = saveState;
+    if (contextChanged) {
+      coachRequestIdentity.current += 1;
+      setCoachBusy(false);
+      setCoachError(undefined);
+      if (storyChanged) setCoachSignal(undefined);
+    }
+  }, [api, project.id, saveState, storySnapshot]);
   const collaboration = project.collaboration ?? {
     enabled: false,
     authors: [project.localAuthorCredit.slice(0, COLLABORATOR_NAME_MAX_LENGTH), ""] as [string, string],
@@ -81,20 +117,31 @@ export function StorySpine({
 
   const askCoach = async (previousSignal?: CoachSignal) => {
     if (!api || !coachEnabled || coachBusy) return;
+    const requestIdentity = coachRequestIdentity.current + 1;
+    coachRequestIdentity.current = requestIdentity;
+    const requestApi = api;
+    const requestProjectId = project.id;
+    const requestStorySnapshot = storySnapshot;
+    const isCurrent = () => coachMounted.current
+      && coachRequestIdentity.current === requestIdentity
+      && currentCoachApi.current === requestApi
+      && currentCoachProjectId.current === requestProjectId
+      && currentStorySnapshot.current === requestStorySnapshot
+      && currentSaveState.current === "saved";
     setCoachBusy(true);
     setCoachHidden(false);
     setCoachError(undefined);
     try {
-      const result = await api.coachStory(project.id, {
+      const result = await requestApi.coachStory(requestProjectId, {
         ...(previousSignal ? { previousSignal } : {}),
       });
-      setCoachSignal(result.signal);
+      if (isCurrent()) setCoachSignal(result.signal);
     } catch (error) {
-      setCoachError(error instanceof ComicApiError
+      if (isCurrent()) setCoachError(error instanceof ComicApiError
         ? error.payload.message
         : "The coach could not finish that check. Your story is still safe.");
     } finally {
-      setCoachBusy(false);
+      if (isCurrent()) setCoachBusy(false);
     }
   };
 
@@ -236,6 +283,9 @@ export function StorySpine({
         </button>
         {configStatus === "disabled" ? (
           <p className="story-coach-mode">Add an API key to ask the AI coach.</p>
+        ) : null}
+        {configStatus === "enabled" && saveState !== "saved" ? (
+          <p className="story-coach-mode">Wait for your story to finish saving before asking.</p>
         ) : null}
         {coachError ? <p className="story-coach-error" role="alert">{coachError}</p> : null}
         {coachSignal && !coachHidden ? (

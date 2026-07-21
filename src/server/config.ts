@@ -3,7 +3,11 @@ import dotenv, { type DotenvConfigOptions } from "dotenv";
 import { z } from "zod";
 
 const ConfigSchema = z.object({
-  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_API_KEY: z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? undefined : value,
+    z.string().min(1).optional(),
+  ),
   OPENAI_TEXT_MODEL: z.literal("gpt-5.6-luna").default("gpt-5.6-luna"),
   OPENAI_IMAGE_MODEL: z.literal("gpt-image-2").default("gpt-image-2"),
   OPENAI_MODERATION_MODEL: z

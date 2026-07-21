@@ -62,6 +62,10 @@ describe("ComicPreview", () => {
     await user.click(screen.getByRole("button", { name: "Present my comic" }));
     expect(screen.getByRole("dialog", { name: "Comic presentation" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Exit presentation" })).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "Next page" })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Exit presentation" })).toHaveFocus();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog", { name: "Comic presentation" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Present my comic" })).toHaveFocus();
@@ -129,6 +133,7 @@ describe("ComicPreview", () => {
       localPath: "images/lettered-art.png",
       status: "approved",
       letteringMode: "embedded",
+      letteringSnapshot: project.panels[0]!.overlays,
     });
     project.panels[0]!.approvedImageVersionId = approved.id;
     project.panels[0]!.imageVersions = [approved];
@@ -146,6 +151,72 @@ describe("ComicPreview", () => {
     expect(screen.queryByText("Already lettered", { selector: ".comic-overlay" }))
       .not.toBeInTheDocument();
     expect(screen.getByText(/dialogue: already lettered/i, { selector: ".sr-only" }))
+      .toBeInTheDocument();
+  });
+
+  it("restores exact local overlays when approved embedded lettering no longer matches", () => {
+    const project = makeProjectWithDialogue("Edited after drawing");
+    const generatedOverlay = {
+      ...project.panels[0]!.overlays[0]!,
+      text: "Words sent to the artwork",
+    };
+    const approved = makeImageVersion({
+      id: "stale-lettered-art",
+      localPath: "images/stale-lettered-art.png",
+      status: "approved",
+      letteringMode: "embedded",
+      letteringSnapshot: [generatedOverlay],
+    });
+    project.panels[0]!.approvedImageVersionId = approved.id;
+    project.panels[0]!.imageVersions = [approved];
+
+    const imageUrl = vi.fn((_panelId: string, imageId: string) => `/test/${imageId}.png`);
+    render(
+      <ComicPreview
+        project={project}
+        api={makeClientApi(project)}
+        imageUrl={imageUrl}
+        exportUrl="/api/projects/test/export.pdf"
+        onBackToPanels={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Edited after drawing", { selector: ".comic-overlay" }))
+      .toBeInTheDocument();
+    expect(screen.queryByText(/dialogue: edited after drawing/i, { selector: ".sr-only" }))
+      .not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Approved artwork for panel 1" }))
+      .not.toBeInTheDocument();
+    expect(imageUrl).not.toHaveBeenCalledWith(project.panels[0]!.id, approved.id);
+    expect(screen.getByText(/re-draw this panel after editing/i)).toBeInTheDocument();
+  });
+
+  it("keeps legacy embedded lettering usable without double-rendering local overlays", () => {
+    const project = makeProjectWithDialogue("Legacy embedded words");
+    const approved = makeImageVersion({
+      id: "legacy-lettered-art",
+      localPath: "images/legacy-lettered-art.png",
+      status: "approved",
+      letteringMode: "embedded",
+    });
+    project.panels[0]!.approvedImageVersionId = approved.id;
+    project.panels[0]!.imageVersions = [approved];
+
+    render(
+      <ComicPreview
+        project={project}
+        api={makeClientApi(project)}
+        imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
+        exportUrl="/api/projects/test/export.pdf"
+        onBackToPanels={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("img", { name: "Approved artwork for panel 1" }))
+      .toHaveAttribute("src", "/test/legacy-lettered-art.png");
+    expect(screen.queryByText("Legacy embedded words", { selector: ".comic-overlay" }))
+      .not.toBeInTheDocument();
+    expect(screen.getByText(/dialogue: legacy embedded words/i, { selector: ".sr-only" }))
       .toBeInTheDocument();
   });
 

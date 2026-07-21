@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import fsSync, { type Stats } from "node:fs";
+import fsSync, { type Dirent, type Stats } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -10,6 +10,7 @@ import {
   type CreateProjectInput,
   type Project,
 } from "../../domain/project";
+import { hydrateLegacyEmbeddedLettering } from "../../domain/image-versions";
 
 const SAFE_SEGMENT = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,127}$/;
 export const MAX_GENERATED_IMAGE_BYTES = 20 * 1024 * 1024;
@@ -28,6 +29,10 @@ export interface ProjectStoreFileSystem {
   ): Promise<void>;
   copyFile(source: string, target: string, mode?: number): Promise<void>;
   rename(source: string, target: string): Promise<void>;
+  readdir(
+    directory: string,
+    options: { withFileTypes: true },
+  ): Promise<Dirent<string>[]>;
   lstat(filename: string): Promise<Stats>;
   realpath(filename: string): Promise<string>;
 }
@@ -41,6 +46,7 @@ const nodeFileSystem: ProjectStoreFileSystem = {
       : fs.writeFile(filename, data),
   copyFile: (source, target, mode) => fs.copyFile(source, target, mode),
   rename: (source, target) => fs.rename(source, target),
+  readdir: (directory, options) => fs.readdir(directory, options),
   lstat: (filename) => fs.lstat(filename),
   realpath: (filename) => fs.realpath(filename),
 };
@@ -186,7 +192,13 @@ export class ProjectStore {
       }
       return;
     }
-    await this.fileSystem.mkdir(resolved, { recursive: resolved === this.root });
+    try {
+      await this.fileSystem.mkdir(resolved, {
+        recursive: resolved === this.root,
+      });
+    } catch (error) {
+      if (errorCode(error) !== "EEXIST") throw error;
+    }
     const created = await this.fileSystem.lstat(resolved);
     if (created.isSymbolicLink() || !created.isDirectory()) {
       throw new StoragePathError("Storage directory is not a real directory");
@@ -493,7 +505,7 @@ export class ProjectStore {
       const document = path.join(directory, filename);
       try {
         await this.assertSafePath(document);
-        return await this.readDocument(document);
+        return hydrateLegacyEmbeddedLettering(await this.readDocument(document));
       } catch (error) {
         if (!canRecoverFrom(error)) throw error;
       }
@@ -504,9 +516,11 @@ export class ProjectStore {
   async recoverInterruptedGenerations(): Promise<number> {
     const projectsRoot = path.join(this.root, "projects");
     await this.assertSafePath(projectsRoot);
-    let entries: import("node:fs").Dirent<string>[];
+    let entries: Dirent<string>[];
     try {
-      entries = await fs.readdir(projectsRoot, { withFileTypes: true });
+      entries = await this.fileSystem.readdir(projectsRoot, {
+        withFileTypes: true,
+      });
     } catch (error) {
       if (isMissing(error)) return 0;
       throw error;

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   HERO_DESCRIPTION_MAX_LENGTH,
   type ImageVersion,
@@ -53,8 +53,10 @@ export function HeroWorkshop({
   const requestIdentity = useRef(0);
   const currentProjectId = useRef(project.id);
   const currentApi = useRef(api);
-  currentProjectId.current = project.id;
-  currentApi.current = api;
+  useLayoutEffect(() => {
+    currentProjectId.current = project.id;
+    currentApi.current = api;
+  }, [api, project.id]);
 
   useEffect(() => {
     mounted.current = true;

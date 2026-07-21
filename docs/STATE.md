@@ -22,7 +22,7 @@ Prepare the verified local project for its external submission steps.
   mocked full journey, multi-page pagination, PDF rendering, AI-coach
   invariants, guided-recipe persistence, same-device collaboration, and
   responsive behavior. The current verification count is 37 test files and
-  266 tests; strict typechecking and the production Vite build also pass.
+  290 tests; strict typechecking and the production Vite build also pass.
 - Guided-studio proof: new projects can use an editable hero recipe or
   freeform description, add up to two child-facing style moods, and follow the
   four-beat story spine. Same-device pass-the-pen credits two local authors
@@ -88,13 +88,18 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Blockers and unknowns
 
-- No known implementation blocker remains. Submission media, access, fields,
-  and Devpost submission remain incomplete external work.
+- No known implementation blocker remains. CodeRabbit's 13 comments were
+  technically triaged, valid findings were fixed, and an independent final
+  review found no remaining Critical or Important issue. A verified 2:48 local
+  review cut, natural continuous ElevenLabs narration master, and timecoded
+  script now exist. Public video upload, access, fields, and Devpost submission
+  remain incomplete external work.
 
 ## Next actions
 
-1. Record the public demo and capture the primary `/feedback` session ID.
-2. Complete and independently verify every Devpost field, then submit.
+1. Review the voiced 2:48 demo, then publish the approved cut to YouTube.
+2. Capture the primary `/feedback` session ID.
+3. Complete and independently verify every Devpost field, then submit.
 
 ## Resume cue
 

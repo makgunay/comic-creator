@@ -1,5 +1,9 @@
 import type { Project } from "../../domain/project";
 import { paginatePanels } from "../../domain/pagination";
+import {
+  hasStaleEmbeddedLettering,
+  hasUsableEmbeddedLettering,
+} from "../../domain/image-versions";
 import { PdfExportError } from "./export-error";
 
 export const PDF_PAGE = {
@@ -91,13 +95,17 @@ export function buildPdfLayout(project: Project): PdfPageLayout[] {
       const approvedVersion = panel.approvedImageVersionId
         ? panel.imageVersions.find((version) => version.id === panel.approvedImageVersionId)
         : undefined;
-      const visualOverlays = approvedVersion?.letteringMode === "embedded"
+      const staleEmbeddedLettering = hasStaleEmbeddedLettering(
+        approvedVersion,
+        panel.overlays,
+      );
+      const visualOverlays = hasUsableEmbeddedLettering(approvedVersion, panel.overlays)
         ? []
         : panel.overlays;
       return {
         panelId: panel.id,
         panelNumber: panel.order + 1,
-        ...(panel.approvedImageVersionId
+        ...(panel.approvedImageVersionId && !staleEmbeddedLettering
           ? { approvedImageVersionId: panel.approvedImageVersionId }
           : {}),
         x,

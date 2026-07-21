@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { approveImageVersion } from "../../domain/image-versions";
+import {
+  approveImageVersion,
+  letteringSnapshotForOverlays,
+} from "../../domain/image-versions";
 import {
   MAX_HERO_IMAGE_VERSIONS,
   MAX_PANEL_IMAGE_VERSIONS,
@@ -197,7 +200,10 @@ export class GenerationService {
               : {}),
             durationMs: generated.durationMs,
             childRevisionDirection: revisionDirection,
-            ...(lettering.length > 0 ? { letteringMode: "embedded" as const } : {}),
+            ...(lettering.length > 0 ? {
+              letteringMode: "embedded" as const,
+              letteringSnapshot: letteringSnapshotForOverlays(lettering),
+            } : {}),
             status: "candidate",
           };
           return {
