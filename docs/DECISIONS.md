@@ -84,18 +84,25 @@ new entry that explicitly supersedes the earlier decision.
 - Consequence: Submission claims must remain narrow: authorship and productive
   creation, not proven literacy gains or summer-loss prevention.
 
-## D-007 — Use a 35-second live panel-generation gate
+## D-007 — Use a 40-second observed live panel-generation target
 
-- Date: 2026-07-20
+- Date: 2026-07-21
 - Status: Accepted
 - Context: Tuned matched reference-panel requests measured 31.272 and 32.335
   seconds and retained the violet jacket, round goggles, curly hair, and
-  moon-kite spool.
-- Decision: Use 35 seconds as the accepted live panel-generation gate.
-- Rationale: The measured spread reflects normal live-model variance while
-  recognizable reference continuity succeeds.
+  moon-kite spool. The original 35-second value was accepted on 2026-07-20.
+  Six later Task 8 panel-image runs measured 26.049, 27.737, 28.654, 35.641,
+  36.151, and 38.477 seconds (mean 32.118 seconds, median 32.148 seconds,
+  maximum 38.477 seconds). Three of six exceeded 35 seconds; none exceeded
+  40 seconds.
+- Decision: Supersede the original 35-second value with a 40-second observed
+  live panel-generation target.
+- Rationale: The six-run evidence shows material normal live-model variance
+  above 35 seconds while remaining within 40 seconds and retaining the
+  established recognizable reference continuity evidence.
 - Consequence: The UI must present an honest drawing wait state, and generation
-  performance remains observed rather than guaranteed.
+  performance remains observed rather than guaranteed. This target is an
+  acceptance observation, not a promise for every live request.
 
 ## D-008 — Make the accepted four-beat story layout authoritative
 

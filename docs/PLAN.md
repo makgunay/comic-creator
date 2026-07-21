@@ -11,7 +11,7 @@ building unnecessary scope.
 
 ## Current checkpoint
 
-Checkpoint 3 — Build and validate the MVP with subagent-driven development.
+Checkpoint 4 — Prepare and submit.
 
 ## Checkpoints
 
@@ -49,7 +49,7 @@ Acceptance: the user approves the written specification and a checkpointed
 implementation plan exists with provider uncertainty converted into an explicit
 early feasibility gate.
 
-### 3. Build and validate the MVP — active
+### 3. Build and validate the MVP — complete
 
 - [x] Close the final specification gaps in hero visual compilation and
   metadata-only provider model diagnostics.
@@ -72,13 +72,14 @@ early feasibility gate.
   deterministic local provider, including preservation of approved artwork,
   recovered retry controls, retained direction, responsive refusal layout,
   and a clean browser console.
-- [ ] Resolve D-007 acceptance with the user: retain or revise the 35-second
-  observed panel target after three of six Task 8 panel samples exceeded it.
+- [x] Resolve D-007 acceptance with the user: the target is revised to 40
+  seconds after Task 8 measured 26.049, 27.737, 28.654, 35.641, 36.151, and
+  38.477 seconds; none of the six observed panel samples exceeded 40 seconds.
 
-Functional acceptance passes: a judge can run the project and reproduce the
-sample demo. Planned implementation and deterministic correction work is
-complete. Checkpoint closure has exactly one open gate: the D-007 decision.
-Live latency acceptance is partial, not passed.
+Functional and latency acceptance pass: a judge can run the project and
+reproduce the sample demo, and the revised 40-second observed panel target
+passes. Planned implementation and deterministic correction work is complete;
+Checkpoint 3 is closed.
 
 ### 4. Prepare and submit — pending
 

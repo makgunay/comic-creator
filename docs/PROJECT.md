@@ -1,6 +1,6 @@
 # Project Brief
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 ## Working title
 
@@ -8,9 +8,10 @@ Comic Creator
 
 ## Stage
 
-Build Week solo MVP implemented and deterministically verified. The accepted
-live-latency target in D-007 remains unresolved because observed image
-generation times varied across that threshold.
+Build Week solo MVP implemented and deterministically verified. Checkpoint 3
+is complete: D-007 accepts a 40-second observed live panel-generation target;
+the six Task 8 samples ranged from 26.049 to 38.477 seconds, so none exceeded
+the accepted target. This is observed timing, not a guarantee.
 
 ## Product definition
 

@@ -5,13 +5,12 @@ Last updated: 2026-07-21
 ## Current stage
 
 The Build Week solo MVP and final deterministic corrections are complete on
-`feature/comic-creator-mvp`. Functional proof passes, but the live latency
-acceptance gate is not passed.
+`feature/comic-creator-mvp`. Checkpoint 3 is closed: functional proof and the
+revised live latency acceptance gate pass.
 
 ## Current focus
 
-Ask the user whether to retain or revise D-007 before treating Checkpoint 3 as
-complete.
+Prepare the external Build Week submission materials and complete Checkpoint 4.
 
 ## Verified facts
 
@@ -37,9 +36,11 @@ complete.
 - Live OpenAI proof: `gpt-5.6-luna` plus `gpt-image-2` completed one approved
   hero, four approved panels, and one non-destructive redirection. Eight paid
   image requests total included the two-call smoke. Exact dialogue stayed local.
-- D-007 remains the accepted 35-second observed panel target. Current variance
-  is material: three Task 8 panel image calls exceeded it, while three completed
-  under it. No retry was made to improve the numbers.
+- D-007 is the accepted 40-second observed panel target. The six Task 8 panel
+  image calls measured 26.049, 27.737, 28.654, 35.641, 36.151, and 38.477
+  seconds (mean 32.118 seconds, median 32.148 seconds, maximum 38.477 seconds).
+  Three exceeded the original 35-second value; none exceeded 40 seconds. No
+  retry was made to improve the numbers.
 - Manual browser proof covered desktop, tablet, mobile, keyboard
   traversal, visible focus, labels, target size, reduced motion, effective 200%
   reflow, sample persistence, safe export failure, and zero normal-path console
@@ -66,8 +67,6 @@ complete.
   Sharp and the pinned TypeScript launcher; the production server recovered an
   interrupted project before listening. A separate clean checkout passed
   `npm ci && npm run verify`.
-- Checkpoint 3 has exactly one open gate: the user decision to retain or revise
-  D-007.
 - The Devpost project remains a draft; `makgunay/comic-creator` is private and
   has no open-source license. The category is `Education`; the deadline is
   2026-07-21 at 5:00 PM Pacific Time.
@@ -79,7 +78,8 @@ complete.
 - Build a local-only core with sample mode; do not wire hosting or accounts.
 - Preserve story authorship by limiting AI to visual-direction compilation and
   illustration.
-- Use a 35-second live panel gate and present an honest drawing wait state.
+- Use a 40-second observed live panel target and present an honest drawing wait
+  state; generation timing is observed, not guaranteed.
 - Use the accepted four-card wide story layout with two tablet columns and one
   mobile column; this is not a domain panel cap.
 - Treat same-device two-author mode as stretch work after the solo core passes.
@@ -88,20 +88,15 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Blockers and unknowns
 
-- Live latency acceptance is partial, not passed: three of six Task 8 panel
-  image samples exceeded D-007. The user must retain or revise that decision
-  before Checkpoint 3 can close.
-- This is not an implementation blocker. Submission media, access, and fields
-  are still incomplete external work.
+- No implementation blocker remains. Submission media, access, fields, and
+  Devpost submission are still incomplete external work.
 
 ## Next actions
 
-1. Ask the user to retain or revise D-007 based on the live variance.
-2. Record the public demo and capture the primary `/feedback` session ID.
-3. Grant required private-repository access and finish the Devpost submission.
+1. Record the public demo and capture the primary `/feedback` session ID.
+2. Grant required private-repository access and finish the Devpost submission.
 
 ## Resume cue
 
 Read `README.md`, this state, the active plan, and the Task 8 SDD report. Resume
-with the D-007 decision, then the first incomplete submission action;
-two-author stretch is unstarted.
+with the first incomplete submission action; two-author stretch is unstarted.

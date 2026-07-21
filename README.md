@@ -147,7 +147,7 @@ after a browser restart and a clipped Hero heading, then verified their fixes.
 
 The founder chose the child-as-author principle, age range, Education category,
 four-beat core, editable preset styles, explicit approval model, local-only
-architecture, private-repository strategy, 35-second observed panel target,
+architecture, private-repository strategy, 40-second observed panel target,
 and the decision to defer two-author mode. Humans also accepted the visual
 direction and decided that sample mode should be the judging default.
 
