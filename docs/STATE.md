@@ -36,8 +36,8 @@ Prepare the external Build Week submission materials and complete Checkpoint 4.
 - Live OpenAI proof: `gpt-5.6-luna` plus `gpt-image-2` completed one approved
   hero, four approved panels, and one non-destructive redirection. Eight paid
   image requests total included the two-call smoke. Exact dialogue stayed local.
-- D-007 is the accepted 40-second observed panel target. The six Task 8 panel
-  image calls measured 26.049, 27.737, 28.654, 35.641, 36.151, and 38.477
+- D-010 supersedes D-007 with the accepted 40-second observed panel target. The
+  six Task 8 panel image calls measured 26.049, 27.737, 28.654, 35.641, 36.151, and 38.477
   seconds (mean 32.118 seconds, median 32.148 seconds, maximum 38.477 seconds).
   Three exceeded the original 35-second value; none exceeded 40 seconds. No
   retry was made to improve the numbers.
@@ -78,8 +78,8 @@ Prepare the external Build Week submission materials and complete Checkpoint 4.
 - Build a local-only core with sample mode; do not wire hosting or accounts.
 - Preserve story authorship by limiting AI to visual-direction compilation and
   illustration.
-- Use a 40-second observed live panel target and present an honest drawing wait
-  state; generation timing is observed, not guaranteed.
+- D-010 supersedes D-007 with a 40-second observed live panel target and an
+  honest drawing wait state; generation timing is observed, not guaranteed.
 - Use the accepted four-card wide story layout with two tablet columns and one
   mobile column; this is not a domain panel cap.
 - Treat same-device two-author mode as stretch work after the solo core passes.

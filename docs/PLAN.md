@@ -72,9 +72,10 @@ early feasibility gate.
   deterministic local provider, including preservation of approved artwork,
   recovered retry controls, retained direction, responsive refusal layout,
   and a clean browser console.
-- [x] Resolve D-007 acceptance with the user: the target is revised to 40
-  seconds after Task 8 measured 26.049, 27.737, 28.654, 35.641, 36.151, and
-  38.477 seconds; none of the six observed panel samples exceeded 40 seconds.
+- [x] Resolve D-007 acceptance with the user through D-010: the target is
+  revised to 40 seconds after Task 8 measured 26.049, 27.737, 28.654, 35.641,
+  36.151, and 38.477 seconds; none of the six observed panel samples exceeded
+  40 seconds.
 
 Functional and latency acceptance pass: a judge can run the project and
 reproduce the sample demo, and the revised 40-second observed panel target
