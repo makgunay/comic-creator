@@ -6,6 +6,7 @@ import {
   type PdfDownload,
 } from "../../src/client/api/client";
 import { ComicPreview } from "../../src/client/features/comic/ComicPreview";
+import { hydrateLegacyEmbeddedLettering } from "../../src/domain/image-versions";
 import type { Project } from "../../src/domain/project";
 import { makeClientApi } from "../fixtures/client-api-fixtures";
 import { deferred } from "../fixtures/generation-fixtures";
@@ -201,11 +202,12 @@ describe("ComicPreview", () => {
     });
     project.panels[0]!.approvedImageVersionId = approved.id;
     project.panels[0]!.imageVersions = [approved];
+    const hydrated = hydrateLegacyEmbeddedLettering(project);
 
     render(
       <ComicPreview
-        project={project}
-        api={makeClientApi(project)}
+        project={hydrated}
+        api={makeClientApi(hydrated)}
         imageUrl={(_panelId, imageId) => `/test/${imageId}.png`}
         exportUrl="/api/projects/test/export.pdf"
         onBackToPanels={vi.fn()}

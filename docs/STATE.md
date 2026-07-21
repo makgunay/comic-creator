@@ -22,7 +22,7 @@ Prepare the verified local project for its external submission steps.
   mocked full journey, multi-page pagination, PDF rendering, AI-coach
   invariants, guided-recipe persistence, same-device collaboration, and
   responsive behavior. The current verification count is 37 test files and
-  290 tests; strict typechecking and the production Vite build also pass.
+  291 tests; strict typechecking and the production Vite build also pass.
 - Guided-studio proof: new projects can use an editable hero recipe or
   freeform description, add up to two child-facing style moods, and follow the
   four-beat story spine. Same-device pass-the-pen credits two local authors
@@ -64,8 +64,8 @@ Prepare the verified local project for its external submission steps.
   separate `npm ci && npm run verify` checkout passed.
 - The Devpost project remains a draft. `makgunay/comic-creator` is public with
   Apache-2.0 licensing for source code and documentation, while original sample
-  artwork and project identity remain reserved. Draft PR #1 carries the full
-  MVP into `main`. The category is `Education`; the deadline is 2026-07-21 at
+  artwork and project identity remain reserved. PR #1 carries the full MVP
+  into `main`. The category is `Education`; the deadline is 2026-07-21 at
   5:00 PM Pacific Time.
 
 ## Active decisions
@@ -88,7 +88,7 @@ See `DECISIONS.md` for rationale and consequences.
 
 ## Blockers and unknowns
 
-- No known implementation blocker remains. CodeRabbit's 13 comments were
+- No known implementation blocker remains. CodeRabbit's 16 comments were
   technically triaged, valid findings were fixed, and an independent final
   review found no remaining Critical or Important issue. A verified 2:48 local
   review cut, natural continuous ElevenLabs narration master, and timecoded

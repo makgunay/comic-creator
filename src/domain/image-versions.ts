@@ -56,8 +56,10 @@ export function hasStaleEmbeddedLettering(
   overlays: readonly TextOverlay[],
 ): boolean {
   return isEmbeddedLettering(version)
-    && version?.letteringSnapshot !== undefined
-    && !hasMatchingEmbeddedLettering(version, overlays);
+    && (
+      version?.letteringSnapshot === undefined
+      || !hasMatchingEmbeddedLettering(version, overlays)
+    );
 }
 
 export function hasUsableEmbeddedLettering(

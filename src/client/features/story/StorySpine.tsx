@@ -293,7 +293,11 @@ export function StorySpine({
             <p>{coachQuestionForSignal(coachSignal)}</p>
             <div className="story-coach-actions">
               <button type="button" onClick={() => setCoachSignal(undefined)}>I've got it</button>
-              <button type="button" disabled={coachBusy} onClick={() => void askCoach(coachSignal)}>
+              <button
+                type="button"
+                disabled={!coachEnabled || coachBusy}
+                onClick={() => void askCoach(coachSignal)}
+              >
                 Ask another
               </button>
               <button type="button" onClick={() => setCoachHidden(true)}>Hide help</button>

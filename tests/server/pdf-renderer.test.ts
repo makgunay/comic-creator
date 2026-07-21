@@ -1,5 +1,6 @@
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it, vi } from "vitest";
+import { hydrateLegacyEmbeddedLettering } from "../../src/domain/image-versions";
 import type { Project } from "../../src/domain/project";
 import { buildPdfLayout } from "../../src/server/export/pdf-layout";
 import {
@@ -99,7 +100,8 @@ describe("PDF layout and rendering", () => {
     )!;
     approved.letteringMode = "embedded";
 
-    const layout = buildPdfLayout(project)[0]!.panels[0]!;
+    const hydrated = hydrateLegacyEmbeddedLettering(project);
+    const layout = buildPdfLayout(hydrated)[0]!.panels[0]!;
     expect(layout.approvedImageVersionId).toBe(approved.id);
     expect(layout.overlays).toEqual([]);
   });

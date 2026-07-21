@@ -127,13 +127,11 @@ a celebratory readable Premiere at desktop and mobile widths.
 
 - [x] Finalize README and third-party notices.
 - [x] Record how Codex and GPT-5.6 contributed.
-- [x] Resolve PR review findings and independently verify the fix set.
-- [x] Publish the repository with Apache-2.0 source licensing and an explicit
-  all-rights-reserved carve-out for original sample artwork and branding.
+- [x] Complete repository and review preparation; current verification evidence
+  is in [STATE.md](STATE.md).
 - [ ] Capture the primary `/feedback` session ID.
-- [ ] Record and verify the public YouTube demo. The local 2:48 review cut,
-  natural continuous narration master, and timecoded script are ready; review and
-  public upload remain.
+- [ ] Publish and verify the public YouTube demo; readiness evidence is in
+  [STATE.md](STATE.md).
 - [ ] Complete every required Devpost field and submit before the deadline.
 
 Acceptance: Devpost reports the project as submitted, not draft, and all links

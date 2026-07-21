@@ -17,7 +17,7 @@ describe("StorySpine", () => {
       .mockResolvedValueOnce({ signal: "big_moment_needs_choice" })
       .mockResolvedValueOnce({ signal: "ending_needs_resolution" });
     const api = makeClientApi(project, { coachStory });
-    render(
+    const view = render(
       <StorySpine
         project={project}
         onChange={vi.fn()}
@@ -38,6 +38,17 @@ describe("StorySpine", () => {
     expect(coachStory).toHaveBeenNthCalledWith(2, project.id, {
       previousSignal: "big_moment_needs_choice",
     });
+
+    view.rerender(
+      <StorySpine
+        project={project}
+        onChange={vi.fn()}
+        api={api}
+        configStatus="enabled"
+        saveState="dirty"
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Ask another" })).toBeDisabled();
   });
 
   it("keeps AI coaching explicitly unavailable in sample mode", () => {

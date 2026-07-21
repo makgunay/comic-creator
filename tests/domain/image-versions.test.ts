@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { approveImageVersion } from "../../src/domain/image-versions";
+import {
+  approveImageVersion,
+  hasStaleEmbeddedLettering,
+  hasUsableEmbeddedLettering,
+} from "../../src/domain/image-versions";
 import { makeImageVersion, makePanel } from "../fixtures/project-fixtures";
 
 describe("approveImageVersion", () => {
@@ -82,6 +86,16 @@ describe("approveImageVersion", () => {
     });
     expect(approveImageVersion(matching, "matching-snapshot").approvedImageVersionId)
       .toBe("matching-snapshot");
+  });
+
+  it("treats snapshot-less embedded lettering as stale until authoritative hydration", () => {
+    const version = makeImageVersion({
+      letteringMode: "embedded",
+      letteringSnapshot: undefined,
+    });
+
+    expect(hasStaleEmbeddedLettering(version, [])).toBe(true);
+    expect(hasUsableEmbeddedLettering(version, [])).toBe(false);
   });
 
   it("rejects a malformed panel with duplicate image version IDs", () => {
